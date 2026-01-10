@@ -1312,33 +1312,39 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
                   ),
                   const SizedBox(height: 8),
                   if (_photo2File != null)
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            _photo2File!,
-                            height: 150,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white),
-                            onPressed: () {
-                              setState(() {
-                                _photo2File = null;
-                              });
-                            },
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.black54,
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(
+                                _photo2File!,
+                                height: 150,
+                                width: constraints.maxWidth.isFinite 
+                                  ? constraints.maxWidth 
+                                  : 300, // Fallback width
+                                fit: BoxFit.cover,
+                              ),
                             ),
-                          ),
-                        ),
-                      ],
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white),
+                                onPressed: () {
+                                  setState(() {
+                                    _photo2File = null;
+                                  });
+                                },
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.black54,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     )
                   else
                     InkWell(
