@@ -42,10 +42,10 @@ class EquipmentOperation {
   factory EquipmentOperation.fromJson(Map<String, dynamic> json) {
     return EquipmentOperation(
       id: int.tryParse(json['id'].toString()) ?? 0,
-      scrum: json['scrum'] as String,
+      scrum: json['scrum']?.toString() ?? '',
       equipmentId: int.tryParse(json['equipment_id'].toString()) ?? 0,
-      date: DateTime.parse(json['date'] as String),
-      shift: json['shift'] as String,
+      date: DateTime.tryParse(json['date']?.toString() ?? '') ?? DateTime.now(),
+      shift: json['shift']?.toString() ?? 'Day',
       userId: int.tryParse(json['user_id'].toString()) ?? 0,
       opsHmStart: double.tryParse(json['ops_hm_start'].toString()) ?? 0.0,
       opsHmEnd: json['ops_hm_end'] != null 
@@ -53,8 +53,8 @@ class EquipmentOperation {
           : null,
       photoId: json['photo_id'] != null ? int.tryParse(json['photo_id'].toString()) : null,
       photo2Id: json['photo2_id'] != null ? int.tryParse(json['photo2_id'].toString()) : null,
-      photoUrl: json['photo_url'] as String?,
-      photo2Url: json['photo2_url'] as String?,
+      photoUrl: json['photo_url']?.toString(),
+      photo2Url: json['photo2_url']?.toString(),
       equipment: json['equipment'] != null 
           ? Equipment.fromJson(json['equipment'] as Map<String, dynamic>) 
           : null,
@@ -65,7 +65,7 @@ class EquipmentOperation {
           ? (json['tasks'] as List).map((task) => Task.fromJson(task as Map<String, dynamic>)).toList() 
           : null,
       createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String) 
+          ? (DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now())
           : DateTime.now(),
     );
   }
@@ -100,6 +100,7 @@ class EquipmentOperation {
   }
 
   String get displayDate {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    final localDate = date.toLocal();
+    return '${localDate.day.toString().padLeft(2, '0')}/${localDate.month.toString().padLeft(2, '0')}/${localDate.year}';
   }
 }

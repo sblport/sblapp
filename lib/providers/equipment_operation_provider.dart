@@ -27,6 +27,10 @@ class EquipmentOperationProvider with ChangeNotifier {
   List<Location> _locations = [];
   bool _isLoadingReferenceData = false;
 
+  // Filters
+  Equipment? _filterEquipment;
+  DateTime? _filterDate;
+
   // Getters
   List<EquipmentOperation> get operations => _operations;
   bool get isLoadingOperations => _isLoadingOperations;
@@ -42,6 +46,22 @@ class EquipmentOperationProvider with ChangeNotifier {
   List<Location> get locations => _locations;
   bool get isLoadingReferenceData => _isLoadingReferenceData;
 
+  Equipment? get filterEquipment => _filterEquipment;
+  DateTime? get filterDate => _filterDate;
+
+  void setFilters({Equipment? equipment, DateTime? date}) {
+    _filterEquipment = equipment;
+    _filterDate = date;
+    loadOperations(refresh: true);
+  }
+
+  void clearFilters() {
+    _filterEquipment = null;
+    _filterDate = null;
+    loadOperations(refresh: true);
+  }
+
+
   /// Load operations list
   Future<void> loadOperations({bool refresh = false}) async {
     if (refresh) {
@@ -54,7 +74,12 @@ class EquipmentOperationProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _service.getOperations(_currentPage);
+      final response = await _service.getOperations(
+        page: _currentPage,
+        equipmentId: _filterEquipment?.id,
+        startDate: _filterDate,
+        endDate: _filterDate,
+      );
       
       if (refresh) {
         _operations = response.data;
@@ -97,15 +122,23 @@ class EquipmentOperationProvider with ChangeNotifier {
     }
   }
 
-  /// Create new operation
+  /// Create operation
   Future<EquipmentOperation?> createOperation(CreateOperationRequest request) async {
+    _isLoadingOperation = true;
+    _operationError = null;
+    notifyListeners();
+
     try {
       final operation = await _service.createOperation(request);
-      _operations.insert(0, operation); // Add to beginning of list
-      notifyListeners();
+      // We should insert it into the list locally so the user sees it immediately if they go back
+      _operations.insert(0, operation); 
       return operation;
     } catch (e) {
-      rethrow;
+      _operationError = e.toString();
+      return null;
+    } finally {
+      _isLoadingOperation = false;
+      notifyListeners();
     }
   }
 
@@ -127,7 +160,8 @@ class EquipmentOperationProvider with ChangeNotifier {
   }
 
   /// Finish operation
-  Future<void> finishOperation(String scrum, FinishOperationRequest request) async {
+  /// Finish operation
+  Future<bool> finishOperation(String scrum, FinishOperationRequest request) async {
     try {
       final operation = await _service.finishOperation(scrum, request);
       
@@ -143,14 +177,18 @@ class EquipmentOperationProvider with ChangeNotifier {
       }
       
       notifyListeners();
+      return true;
     } catch (e) {
-      rethrow;
+      _operationError = e.toString();
+      notifyListeners();
+      return false;
     }
   }
 
   /// Load all reference data
   Future<void> loadReferenceData() async {
-    if (_equipment.isNotEmpty) return; // Already loaded
+    // Force reload to ensure we get data
+    // if (_equipment.isNotEmpty) return; 
 
     _isLoadingReferenceData = true;
     notifyListeners();

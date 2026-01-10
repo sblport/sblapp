@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../providers/equipment_operation_provider.dart';
 import '../models/equipment_operation.dart';
+import '../models/equipment.dart';
 import 'create_operation_screen.dart';
 import 'operation_details_screen.dart';
 
@@ -33,6 +34,7 @@ class _OperationsListScreenState extends State<OperationsListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
       provider.loadOperations(refresh: true);
+      provider.loadReferenceData();
     });
   }
 
@@ -63,96 +65,172 @@ class _OperationsListScreenState extends State<OperationsListScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Consumer<EquipmentOperationProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoadingOperations && provider.operations.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Column(
+        children: [
+          Consumer<EquipmentOperationProvider>(
+            builder: (context, provider, _) {
+              return Container(
+                padding: const EdgeInsets.all(12),
+                color: Colors.white,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        // Equipment Filter
+                        Expanded(
+                          child: DropdownButtonFormField<Equipment>(
+                            value: provider.filterEquipment,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: 'Filter Equipment',
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              isDense: true,
+                            ),
+                            items: provider.equipment.map((e) => DropdownMenuItem(
+                              value: e,
+                              child: Text(e.code, overflow: TextOverflow.ellipsis),
+                            )).toList(),
+                            onChanged: (val) {
+                              provider.setFilters(equipment: val, date: provider.filterDate);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        
+                        // Date Filter Button
+                        IconButton(
+                          icon: Icon(
+                            Icons.calendar_today, 
+                            color: provider.filterDate != null ? AppColors.primary : Colors.grey
+                          ),
+                          onPressed: () async {
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate: provider.filterDate ?? DateTime.now(),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2030),
+                            );
+                            if (date != null) {
+                              provider.setFilters(equipment: provider.filterEquipment, date: date);
+                            }
+                          },
+                        ),
 
-          if (provider.operationsError != null && provider.operations.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Failed to load operations',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    provider.operationsError!,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: _onRefresh,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                        // Clear Filter
+                        if (provider.filterEquipment != null || provider.filterDate != null)
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.red),
+                            onPressed: provider.clearFilters,
+                          ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
+                    if (provider.filterDate != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Date: ${provider.filterDate!.toIso8601String().split('T')[0]}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+          Expanded(
+            child: Consumer<EquipmentOperationProvider>(
+              builder: (context, provider, child) {
+                if (provider.isLoadingOperations && provider.operations.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (provider.operations.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No operations yet',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap the + button to start a new operation',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: _onRefresh,
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.operations.length + (provider.hasMorePages ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == provider.operations.length) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Center(child: CircularProgressIndicator()),
+                if (provider.operationsError != null && provider.operations.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Failed to load operations',
+                          style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          provider.operationsError!,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: _onRefresh,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
 
-                return _OperationCard(
-                  operation: provider.operations[index],
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => OperationDetailsScreen(
-                          scrum: provider.operations[index].scrum,
+                if (provider.operations.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No operations found',
+                          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                         ),
-                      ),
-                    );
-                  },
+                      ],
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: provider.operations.length + (provider.hasMorePages ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == provider.operations.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      return _OperationCard(
+                        operation: provider.operations[index],
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => OperationDetailsScreen(
+                                scrum: provider.operations[index].scrum,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 );
               },
             ),
-          );
-        },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {

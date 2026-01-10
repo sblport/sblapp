@@ -596,6 +596,16 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
   void initState(){
     super.initState();
     _loadDefaultValues();
+    _checkReferenceData();
+  }
+
+  void _checkReferenceData() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
+      if (provider.activities.isEmpty || provider.locations.isEmpty) {
+        provider.loadReferenceData();
+      }
+    });
   }
 
   @override
@@ -758,6 +768,9 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
               Expanded(
                 child: Consumer<EquipmentOperationProvider>(
                   builder: (context, provider, child) {
+                    if (provider.isLoadingReferenceData) { // Assume getter exists
+                       return const Center(child: CircularProgressIndicator());
+                    }
                     return Form(
                       key: _formKey,
                       child: ListView(
@@ -1014,8 +1027,8 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
         
         // Check file size
         final fileSize = await imageFile.length();
-        if (fileSize > 5 * 1024 * 1024) {
-          // Compress if > 5MB
+        if (fileSize > 512 * 1024) { // > 512KB
+          // Compress
           final compressedFile = await _compressImage(imageFile);
           if (compressedFile != null) {
             imageFile = compressedFile;
@@ -1090,7 +1103,21 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    // Show Loading Dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Uploading... Please wait'),
+          ],
+        ),
+      ),
+    );
 
     try {
       final request = FinishOperationRequest(
@@ -1099,18 +1126,27 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
       );
 
       final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
-      await provider.finishOperation(widget.scrum, request);
+      final success = await provider.finishOperation(widget.scrum, request);
 
       if (mounted) {
-        Navigator.pop(context); // Close dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Operation finished successfully!')),
-        );
+        Navigator.pop(context); // Close Loading Dialog
+        
+        if (success) {
+          Navigator.pop(context); // Close Finish Dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Operation finished successfully!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed: ${provider.operationError ?? "Unknown Error"}')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
+        Navigator.pop(context); // Close Loading Dialog
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to finish operation: $e')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     } finally {

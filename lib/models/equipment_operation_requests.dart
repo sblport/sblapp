@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 
 class CreateOperationRequest {
   final int equipmentId;
@@ -22,6 +23,16 @@ class CreateOperationRequest {
       'shift': shift,
       'ops_hm_start': opsHmStart.toString(),
     };
+  }
+
+  Future<FormData> toFormData() async {
+    return FormData.fromMap({
+      ...toMap(),
+      'photo': await MultipartFile.fromFile(
+        photo.path,
+        filename: photo.path.split('/').last,
+      ),
+    });
   }
 }
 

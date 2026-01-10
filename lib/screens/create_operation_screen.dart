@@ -60,10 +60,10 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
       if (pickedFile != null) {
         File imageFile = File(pickedFile.path);
         
-        // Check file size
+        // Check file size and compress if needed (Lowered threshold for Nginx 1MB limit)
         final fileSize = await imageFile.length();
-        if (fileSize > 5 * 1024 * 1024) {
-          // Compress if > 5MB
+        if (fileSize > 512 * 1024) { // > 512KB
+          // Compress
           final compressedFile = await _compressImage(imageFile);
           if (compressedFile != null) {
             imageFile = compressedFile;
@@ -175,16 +175,24 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
       final operation = await provider.createOperation(request);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Operation started successfully!')),
-        );
-        
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OperationDetailsScreen(scrum: operation!.scrum),
-          ),
-        );
+        if (operation != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Operation started successfully!')),
+          );
+          
+          // Navigate to details/tasks screen instead of list
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OperationDetailsScreen(scrum: operation.scrum),
+            ),
+          );
+        } else {
+           // Display specific backend error
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(content: Text('Failed: ${provider.operationError ?? "Unknown Error"}')),
+           );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -231,9 +239,14 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
                   items: provider.equipment.map((equipment) {
                     return DropdownMenuItem(
                       value: equipment,
-                      child: Text(equipment.displayName),
+                      child: Text(
+                        equipment.displayName,
+                        overflow: TextOverflow.ellipsis, // Prevent overflow
+                        maxLines: 1,
+                      ),
                     );
                   }).toList(),
+                  isExpanded: true, // Allow dropdown to expand to fit width
                   onChanged: (value) {
                     setState(() {
                       _selectedEquipment = value;
