@@ -1118,77 +1118,99 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
     }
 
     // Show Loading Dialog with progress
+    print('DEBUG: Creating progress dialog...');
     final uploadProgress = ValueNotifier<double>(0.0);
     
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => ValueListenableBuilder<double>(
-        valueListenable: uploadProgress,
-        builder: (context, progress, child) {
-          return AlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 3,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  progress == 0 
-                    ? 'Preparing upload...' 
-                    : 'Uploading: ${(progress * 100).toStringAsFixed(0)}%',
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: Colors.grey[200],
-                  color: AppColors.primary,
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+      builder: (dialogContext) {
+        print('DEBUG: Dialog builder called');
+        return ValueListenableBuilder<double>(
+          valueListenable: uploadProgress,
+          builder: (context, progress, child) {
+            print('DEBUG: ValueListenableBuilder rebuilt with progress: $progress');
+            return AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    progress == 0 
+                      ? 'Preparing upload...' 
+                      : 'Uploading: ${(progress * 100).toStringAsFixed(0)}%',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.grey[200],
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
 
     try {
+      print('DEBUG: Creating FinishOperationRequest...');
       final request = FinishOperationRequest(
         opsHmEnd: double.parse(_hmEndController.text),
         photo2: _photo2File!,
       );
+      
+      print('DEBUG: File size: ${await _photo2File!.length()} bytes');
+      print('DEBUG: Calling finishOperation...');
 
       final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
       final success = await provider.finishOperation(
         widget.scrum,
         request,
         onProgress: (sent, total) {
+          print('DEBUG: Progress callback - sent: $sent, total: $total');
           if (total > 0) {
-            uploadProgress.value = sent / total;
+            final newProgress = sent / total;
+            print('DEBUG: Updating progress to: ${(newProgress * 100).toStringAsFixed(1)}%');
+            uploadProgress.value = newProgress;
           }
         },
       );
 
+      print('DEBUG: Upload completed. Success: $success');
+
       if (mounted) {
+        print('DEBUG: Closing dialog and cleaning up...');
         Navigator.pop(context); // Close Loading Dialog
         uploadProgress.dispose(); // Clean up
         
         if (success) {
           Navigator.pop(context); // Close Finish Dialog
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Operation finished successfully!')),
+            const SnackBar(
+              content: Text('Operation finished successfully!'),
+              backgroundColor: Colors.green,
+            ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed: ${provider.operationError ?? "Unknown Error"}')),
+            const SnackBar(content: Text('Failed to finish operation')),
           );
         }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('DEBUG: Error occurred: $e');
+      print('DEBUG: Stack trace: $stackTrace');
+      
       if (mounted) {
         Navigator.pop(context); // Close Loading Dialog
+        uploadProgress.dispose();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
         );

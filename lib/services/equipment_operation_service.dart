@@ -255,6 +255,7 @@ class EquipmentOperationService {
     void Function(int sent, int total)? onProgress,
   }) async {
     try {
+      print('DEBUG SERVICE: Creating FormData for scrum: $scrum');
       final formData = FormData.fromMap({
         ...request.toMap(),
         'photo2': await MultipartFile.fromFile(
@@ -262,6 +263,9 @@ class EquipmentOperationService {
           filename: request.photo2.path.split('/').last,
         ),
       });
+      
+      print('DEBUG SERVICE: FormData created. Sending POST request...');
+      print('DEBUG SERVICE: Progress callback provided: ${onProgress != null}');
 
       final response = await _dio.post(
         '${ApiConstants.eqpOperationsEndpoint}/$scrum/finish',
@@ -269,8 +273,13 @@ class EquipmentOperationService {
         onSendProgress: onProgress,
       );
 
+      print('DEBUG SERVICE: Response received. Status: ${response.statusCode}');
+      print('DEBUG SERVICE: Response data keys: ${response.data?.keys}');
+      
       return EquipmentOperation.fromJson(response.data['operation']);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('DEBUG SERVICE: Error in finishOperation: $e');
+      print('DEBUG SERVICE: Stack trace: $stackTrace');
       throw Exception('Failed to finish operation: $e');
     }
   }
