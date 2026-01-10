@@ -30,7 +30,10 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
   void initState() {
     super.initState();
     _selectedShift = _getAutoShift();
-    _loadReferenceData();
+    // Defer loading data until after the build to prevent "setState during build" error
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadReferenceData();
+    });
   }
 
   @override
