@@ -165,10 +165,17 @@ class EquipmentOperationProvider with ChangeNotifier {
   }
 
   /// Finish operation
-  /// Finish operation
-  Future<bool> finishOperation(String scrum, FinishOperationRequest request) async {
+  Future<bool> finishOperation(
+    String scrum,
+    FinishOperationRequest request, {
+    void Function(int sent, int total)? onProgress,
+  }) async {
     try {
-      final operation = await _service.finishOperation(scrum, request);
+      final operation = await _service.finishOperation(
+        scrum,
+        request,
+        onProgress: onProgress,
+      );
       
       // Update in operations list
       final index = _operations.indexWhere((op) => op.scrum == scrum);

@@ -1117,19 +1117,38 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
       return;
     }
 
-    // Show Loading Dialog
+    // Show Loading Dialog with progress
+    double uploadProgress = 0.0;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Uploading... Please wait'),
-          ],
-        ),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  value: uploadProgress,
+                  strokeWidth: 3,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  uploadProgress == 0 
+                    ? 'Preparing upload...' 
+                    : 'Uploading: ${(uploadProgress * 100).toStringAsFixed(0)}%',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: uploadProgress,
+                  backgroundColor: Colors.grey[200],
+                  color: AppColors.primary,
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
 
@@ -1140,7 +1159,23 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
       );
 
       final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
-      final success = await provider.finishOperation(widget.scrum, request);
+      final success = await provider.finishOperation(
+        widget.scrum,
+        request,
+        onProgress: (sent, total) {
+          if (total > 0) {
+            // Update progress
+            final newProgress = sent / total;
+            if ((newProgress - uploadProgress).abs() > 0.01) { // Update every 1%
+              uploadProgress = newProgress;
+              // Trigger rebuild of dialog
+              if (mounted) {
+                (dialogContext as Element).markNeedsBuild();
+              }
+            }
+          }
+        },
+      );
 
       if (mounted) {
         Navigator.pop(context); // Close Loading Dialog

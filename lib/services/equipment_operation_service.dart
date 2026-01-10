@@ -251,8 +251,9 @@ class EquipmentOperationService {
   /// Finish operation
   Future<EquipmentOperation> finishOperation(
     String scrum,
-    FinishOperationRequest request,
-  ) async {
+    FinishOperationRequest request, {
+    void Function(int sent, int total)? onProgress,
+  }) async {
     try {
       final formData = FormData.fromMap({
         ...request.toMap(),
@@ -265,6 +266,7 @@ class EquipmentOperationService {
       final response = await _dio.post(
         '${ApiConstants.eqpOperationsEndpoint}/$scrum/finish',
         data: formData,
+        onSendProgress: onProgress,
       );
 
       return EquipmentOperation.fromJson(response.data['operation']);
