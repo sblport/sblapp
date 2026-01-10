@@ -1118,30 +1118,32 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
     }
 
     // Show Loading Dialog with progress
-    double uploadProgress = 0.0;
+    final uploadProgress = ValueNotifier<double>(0.0);
+    
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
+      builder: (dialogContext) => ValueListenableBuilder<double>(
+        valueListenable: uploadProgress,
+        builder: (context, progress, child) {
           return AlertDialog(
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(
-                  value: uploadProgress,
+                  value: progress,
                   strokeWidth: 3,
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  uploadProgress == 0 
+                  progress == 0 
                     ? 'Preparing upload...' 
-                    : 'Uploading: ${(uploadProgress * 100).toStringAsFixed(0)}%',
+                    : 'Uploading: ${(progress * 100).toStringAsFixed(0)}%',
                   style: const TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
-                  value: uploadProgress,
+                  value: progress,
                   backgroundColor: Colors.grey[200],
                   color: AppColors.primary,
                 ),
@@ -1164,21 +1166,14 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
         request,
         onProgress: (sent, total) {
           if (total > 0) {
-            // Update progress
-            final newProgress = sent / total;
-            if ((newProgress - uploadProgress).abs() > 0.01) { // Update every 1%
-              uploadProgress = newProgress;
-              // Trigger rebuild of dialog
-              if (mounted) {
-                (dialogContext as Element).markNeedsBuild();
-              }
-            }
+            uploadProgress.value = sent / total;
           }
         },
       );
 
       if (mounted) {
         Navigator.pop(context); // Close Loading Dialog
+        uploadProgress.dispose(); // Clean up
         
         if (success) {
           Navigator.pop(context); // Close Finish Dialog

@@ -13,7 +13,9 @@ import 'providers/equipment_operation_provider.dart';
 import 'screens/operations_list_screen.dart';
 import 'services/offline_sync_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
   // Initialize offline sync service
   OfflineSyncService.instance.initialize();
   
