@@ -6,6 +6,7 @@ import '../models/equipment_operation.dart';
 import '../models/equipment.dart';
 import '../models/activity.dart';
 import '../models/location.dart';
+import '../models/organization.dart';
 import '../models/task.dart';
 import '../models/equipment_operation_requests.dart';
 import 'database_helper.dart';
@@ -198,6 +199,18 @@ class EquipmentOperationService {
       print('DEBUG: Error creating operation: $e');
       throw Exception('Failed to create operation: $e');
     }
+
+
+  /// Get all organizations
+  Future<List<Organization>> getOrganizations() async {
+    try {
+      final response = await _dio.get(ApiConstants.eqpOrgsEndpoint);
+      
+      final List<dynamic> data = response.data;
+      return data.map((json) => Organization.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Failed to load organizations: $e');
+    }
   }
 
   /// Add task to operation (with offline support)
@@ -249,13 +262,13 @@ class EquipmentOperationService {
   }
 
   /// Finish operation
+  /// Finish operation
   Future<EquipmentOperation> finishOperation(
     String scrum,
     FinishOperationRequest request, {
     void Function(int sent, int total)? onProgress,
   }) async {
     try {
-      print('DEBUG SERVICE: Creating FormData for scrum: $scrum');
       final formData = FormData.fromMap({
         ...request.toMap(),
         'photo2': await MultipartFile.fromFile(
@@ -263,9 +276,6 @@ class EquipmentOperationService {
           filename: request.photo2.path.split('/').last,
         ),
       });
-      
-      print('DEBUG SERVICE: FormData created. Sending POST request...');
-      print('DEBUG SERVICE: Progress callback provided: ${onProgress != null}');
 
       final response = await _dio.post(
         '${ApiConstants.eqpOperationsEndpoint}/$scrum/finish',
@@ -273,13 +283,8 @@ class EquipmentOperationService {
         onSendProgress: onProgress,
       );
 
-      print('DEBUG SERVICE: Response received. Status: ${response.statusCode}');
-      print('DEBUG SERVICE: Response data keys: ${response.data?.keys}');
-      
       return EquipmentOperation.fromJson(response.data['operation']);
-    } catch (e, stackTrace) {
-      print('DEBUG SERVICE: Error in finishOperation: $e');
-      print('DEBUG SERVICE: Stack trace: $stackTrace');
+    } catch (e) {
       throw Exception('Failed to finish operation: $e');
     }
   }

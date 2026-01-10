@@ -12,6 +12,7 @@ import '../models/task.dart';
 import '../models/equipment_operation_requests.dart';
 import '../models/activity.dart';
 import '../models/location.dart';
+import '../models/organization.dart';
 
 class OperationDetailsScreen extends StatefulWidget {
   final String scrum;
@@ -590,6 +591,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
   DateTime _taskEnd = DateTime.now().add(const Duration(hours: 2));
   Activity? _selectedActivity;
   Location? _selectedLocation;
+  Organization? _selectedOrganization;
   bool _isSubmitting = false;
 
   @override
@@ -697,6 +699,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
         code: _codeController.text.isNotEmpty ? _codeController.text : null,
         result: _resultController.text.isNotEmpty ? _resultController.text : null,
         remarks: _remarksController.text.isNotEmpty ? _remarksController.text : null,
+        orderBy: _selectedOrganization?.id,
       );
 
       final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
@@ -870,6 +873,30 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                             onChanged: (value) {
                               setState(() {
                                 _selectedLocation = value;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Order By Dropdown
+                          DropdownButtonFormField<Organization>(
+                            value: _selectedOrganization,
+                            decoration: InputDecoration(
+                              labelText: 'Order By',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              prefixIcon: const Icon(Icons.person),
+                            ),
+                            items: provider.organizations.map((org) {
+                              return DropdownMenuItem(
+                                value: org,
+                                child: Text(org.chartname),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedOrganization = value;
                               });
                             },
                           ),
@@ -1118,18 +1145,15 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
     }
 
     // Show Loading Dialog with progress
-    print('DEBUG: Creating progress dialog...');
     final uploadProgress = ValueNotifier<double?>(null); // Start with null (indeterminate)
     
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        print('DEBUG: Dialog builder called');
         return ValueListenableBuilder<double?>(
           valueListenable: uploadProgress,
           builder: (context, progress, child) {
-            print('DEBUG: ValueListenableBuilder rebuilt with progress: $progress');
             return AlertDialog(
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1161,44 +1185,32 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
     );
 
     try {
-      print('DEBUG: Creating FinishOperationRequest...');
       final request = FinishOperationRequest(
         opsHmEnd: double.parse(_hmEndController.text),
         photo2: _photo2File!,
       );
-      
-      print('DEBUG: File size: ${await _photo2File!.length()} bytes');
-      print('DEBUG: Calling finishOperation...');
 
       final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
       final success = await provider.finishOperation(
         widget.scrum,
         request,
         onProgress: (sent, total) {
-          print('DEBUG: Progress callback - sent: $sent, total: $total');
           if (total > 0 && sent >= 0) {
             final newProgress = sent / total;
             // Ensure value is finite (not NaN or Infinity)
             if (newProgress.isFinite && newProgress >= 0 && newProgress <= 1) {
-              print('DEBUG: Updating progress to: ${(newProgress * 100).toStringAsFixed(1)}%');
               uploadProgress.value = newProgress;
-            } else {
-              print('DEBUG: WARNING - Invalid progress value: $newProgress');
             }
           }
         },
       );
 
-      print('DEBUG: Upload completed. Success: $success');
-
       if (mounted) {
-        print('DEBUG: Closing dialog...');
         Navigator.pop(context); // Close Loading Dialog first
         
         // Small delay before dispose to ensure dialog is fully closed
         await Future.delayed(const Duration(milliseconds: 100));
         uploadProgress.dispose();
-        print('DEBUG: Dialog closed and disposed');
         
         if (success) {
           Navigator.pop(context); // Close Finish Dialog
@@ -1215,9 +1227,6 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
         }
       }
     } catch (e, stackTrace) {
-      print('DEBUG: Error occurred: $e');
-      print('DEBUG: Stack trace: $stackTrace');
-      
       if (mounted) {
         Navigator.pop(context); // Close Loading Dialog
         await Future.delayed(const Duration(milliseconds: 100));
@@ -1235,7 +1244,6 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    print('DEBUG: _FinishOperationDialog build called. isSubmitting: $_isSubmitting, hasPhoto: ${_photo2File != null}');
     return AlertDialog(
       title: const Text('Finish Operation'),
       content: ConstrainedBox(

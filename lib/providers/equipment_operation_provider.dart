@@ -3,6 +3,7 @@ import '../models/equipment_operation.dart';
 import '../models/equipment.dart';
 import '../models/activity.dart';
 import '../models/location.dart';
+import '../models/organization.dart';
 import '../models/equipment_operation_requests.dart';
 import '../services/equipment_operation_service.dart';
 
@@ -25,6 +26,7 @@ class EquipmentOperationProvider with ChangeNotifier {
   List<Equipment> _equipment = [];
   List<Activity> _activities = [];
   List<Location> _locations = [];
+  List<Organization> _organizations = [];
   bool _isLoadingReferenceData = false;
 
   // Filters
@@ -44,6 +46,7 @@ class EquipmentOperationProvider with ChangeNotifier {
   List<Equipment> get equipment => _equipment;
   List<Activity> get activities => _activities;
   List<Location> get locations => _locations;
+  List<Organization> get organizations => _organizations;
   bool get isLoadingReferenceData => _isLoadingReferenceData;
 
   Equipment? get filterEquipment => _filterEquipment;
@@ -210,12 +213,14 @@ class EquipmentOperationProvider with ChangeNotifier {
         _service.getEquipment(),
         _service.getActivities(),
         _service.getLocations(),
+        _service.getOrganizations(),
       ]);
 
-      if (results.length >= 3) {
+      if (results.length >= 4) {
         _equipment = results[0] as List<Equipment>;
         _activities = results[1] as List<Activity>;
         _locations = results[2] as List<Location>;
+        _organizations = results[3] as List<Organization>;
       }
     } catch (e) {
       print('Failed to load reference data: $e');
@@ -223,6 +228,7 @@ class EquipmentOperationProvider with ChangeNotifier {
       _equipment = [];
       _activities = [];
       _locations = [];
+      _organizations = [];
     } finally {
       _isLoadingReferenceData = false;
       notifyListeners();

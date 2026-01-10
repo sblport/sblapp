@@ -15,4 +15,5 @@ class ApiConstants {
   static const String eqpEquipmentEndpoint = '/api/eqp/equipment';
   static const String eqpActivitiesEndpoint = '/api/eqp/activities';
   static const String eqpLocationsEndpoint = '/api/eqp/locations';
+  static const String eqpOrgsEndpoint = '/api/eqp/orgs';
 }

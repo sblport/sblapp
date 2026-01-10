@@ -46,6 +46,7 @@ class CreateTaskRequest {
   final String? code;
   final String? result;
   final String? remarks;
+  final int? orderBy;
 
   CreateTaskRequest({
     required this.taskStart,
@@ -57,6 +58,7 @@ class CreateTaskRequest {
     this.code,
     this.result,
     this.remarks,
+    this.orderBy,
   });
 
   Map<String, dynamic> toJson() {
@@ -70,6 +72,7 @@ class CreateTaskRequest {
       'code': code,
       'result': result,
       'remarks': remarks,
+      'order_by': orderBy,
     };
   }
 }

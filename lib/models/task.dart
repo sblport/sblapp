@@ -12,6 +12,7 @@ class Task {
   final String? code;
   final String? result;
   final String? remarks;
+  final int? orderBy;
 
   Task({
     required this.id,
@@ -24,6 +25,7 @@ class Task {
     this.code,
     this.result,
     this.remarks,
+    this.orderBy,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,9 @@ class Task {
       code: json['code'] as String?,
       result: json['result'] as String?,
       remarks: json['remarks'] as String?,
+      orderBy: json['order_by'] != null 
+          ? int.tryParse(json['order_by'].toString()) 
+          : null,
     );
   }
 
@@ -61,6 +66,7 @@ class Task {
       'code': code,
       'result': result,
       'remarks': remarks,
+      'order_by': orderBy,
     };
   }
 
