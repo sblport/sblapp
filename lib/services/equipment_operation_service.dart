@@ -40,15 +40,38 @@ class EquipmentOperationService {
         queryParameters: {'page': page},
       );
 
-      final data = response.data['data'] as List;
-      final operations = data.map((json) => EquipmentOperation.fromJson(json)).toList();
+      var responseData = response.data;
+      
+      List<EquipmentOperation> operations = [];
+      int currentPage = 1;
+      int lastPage = 1;
+      int perPage = 20;
+      int total = 0;
+
+      // Handle Direct List Response (Production?)
+      if (responseData is List) {
+        operations = responseData.map((json) => EquipmentOperation.fromJson(json)).toList();
+        total = operations.length;
+      } 
+      // Handle Paginated Map Response (Test/Laravel Default)
+      else if (responseData is Map<String, dynamic>) {
+        if (responseData['data'] is List) {
+           final list = responseData['data'] as List;
+           operations = list.map((json) => EquipmentOperation.fromJson(json)).toList();
+           
+           currentPage = int.tryParse(responseData['current_page']?.toString() ?? '1') ?? 1;
+           lastPage = int.tryParse(responseData['last_page']?.toString() ?? '1') ?? 1;
+           perPage = int.tryParse(responseData['per_page']?.toString() ?? '20') ?? 20;
+           total = int.tryParse(responseData['total']?.toString() ?? '0') ?? 0;
+        }
+      }
 
       return PaginatedResponse(
         data: operations,
-        currentPage: int.tryParse(response.data['current_page'].toString()) ?? 1,
-        lastPage: int.tryParse(response.data['last_page'].toString()) ?? 1,
-        perPage: int.tryParse(response.data['per_page'].toString()) ?? 20,
-        total: int.tryParse(response.data['total'].toString()) ?? 0,
+        currentPage: currentPage,
+        lastPage: lastPage,
+        perPage: perPage,
+        total: total,
       );
     } catch (e) {
       throw Exception('Failed to load operations: $e');

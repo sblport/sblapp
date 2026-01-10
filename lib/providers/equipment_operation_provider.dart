@@ -162,11 +162,17 @@ class EquipmentOperationProvider with ChangeNotifier {
         _service.getLocations(),
       ]);
 
-      _equipment = results[0] as List<Equipment>;
-      _activities = results[1] as List<Activity>;
-      _locations = results[2] as List<Location>;
+      if (results.length >= 3) {
+        _equipment = results[0] as List<Equipment>;
+        _activities = results[1] as List<Activity>;
+        _locations = results[2] as List<Location>;
+      }
     } catch (e) {
       print('Failed to load reference data: $e');
+      // Set empty lists on error
+      _equipment = [];
+      _activities = [];
+      _locations = [];
     } finally {
       _isLoadingReferenceData = false;
       notifyListeners();
