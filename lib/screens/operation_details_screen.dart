@@ -1119,14 +1119,14 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
 
     // Show Loading Dialog with progress
     print('DEBUG: Creating progress dialog...');
-    final uploadProgress = ValueNotifier<double>(0.0);
+    final uploadProgress = ValueNotifier<double?>(null); // Start with null (indeterminate)
     
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         print('DEBUG: Dialog builder called');
-        return ValueListenableBuilder<double>(
+        return ValueListenableBuilder<double?>(
           valueListenable: uploadProgress,
           builder: (context, progress, child) {
             print('DEBUG: ValueListenableBuilder rebuilt with progress: $progress');
@@ -1135,22 +1135,23 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   CircularProgressIndicator(
-                    value: progress,
+                    value: progress, // null = indeterminate, 0.0-1.0 = determinate
                     strokeWidth: 3,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    progress == 0 
-                      ? 'Preparing upload...' 
+                    progress == null
+                      ? 'Preparing upload...'
                       : 'Uploading: ${(progress * 100).toStringAsFixed(0)}%',
                     style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.grey[200],
-                    color: AppColors.primary,
-                  ),
+                  if (progress != null)
+                    LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: Colors.grey[200],
+                      color: AppColors.primary,
+                    ),
                 ],
               ),
             );
@@ -1175,10 +1176,15 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
         request,
         onProgress: (sent, total) {
           print('DEBUG: Progress callback - sent: $sent, total: $total');
-          if (total > 0) {
+          if (total > 0 && sent >= 0) {
             final newProgress = sent / total;
-            print('DEBUG: Updating progress to: ${(newProgress * 100).toStringAsFixed(1)}%');
-            uploadProgress.value = newProgress;
+            // Ensure value is finite (not NaN or Infinity)
+            if (newProgress.isFinite && newProgress >= 0 && newProgress <= 1) {
+              print('DEBUG: Updating progress to: ${(newProgress * 100).toStringAsFixed(1)}%');
+              uploadProgress.value = newProgress;
+            } else {
+              print('DEBUG: WARNING - Invalid progress value: $newProgress');
+            }
           }
         },
       );
@@ -1186,9 +1192,13 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
       print('DEBUG: Upload completed. Success: $success');
 
       if (mounted) {
-        print('DEBUG: Closing dialog and cleaning up...');
-        Navigator.pop(context); // Close Loading Dialog
-        uploadProgress.dispose(); // Clean up
+        print('DEBUG: Closing dialog...');
+        Navigator.pop(context); // Close Loading Dialog first
+        
+        // Small delay before dispose to ensure dialog is fully closed
+        await Future.delayed(const Duration(milliseconds: 100));
+        uploadProgress.dispose();
+        print('DEBUG: Dialog closed and disposed');
         
         if (success) {
           Navigator.pop(context); // Close Finish Dialog
@@ -1210,6 +1220,7 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
       
       if (mounted) {
         Navigator.pop(context); // Close Loading Dialog
+        await Future.delayed(const Duration(milliseconds: 100));
         uploadProgress.dispose();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
@@ -1224,14 +1235,20 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
 
   @override
   Widget build(BuildContext context) {
+    print('DEBUG: _FinishOperationDialog build called. isSubmitting: $_isSubmitting, hasPhoto: ${_photo2File != null}');
     return AlertDialog(
       title: const Text('Finish Operation'),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7, // Max 70% of screen height
+          maxWidth: 400,
+        ),
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
               if (_isReadonly)
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -1352,6 +1369,7 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
             ],
           ),
         ),
+      ),
       ),
       actions: [
         TextButton(
