@@ -199,6 +199,7 @@ class EquipmentOperationService {
       print('DEBUG: Error creating operation: $e');
       throw Exception('Failed to create operation: $e');
     }
+  }
 
 
   /// Get all organizations

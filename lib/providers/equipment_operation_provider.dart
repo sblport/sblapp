@@ -202,33 +202,46 @@ class EquipmentOperationProvider with ChangeNotifier {
 
   /// Load all reference data
   Future<void> loadReferenceData() async {
-    // Force reload to ensure we get data
-    // if (_equipment.isNotEmpty) return; 
-
     _isLoadingReferenceData = true;
     notifyListeners();
 
     try {
-      final results = await Future.wait([
-        _service.getEquipment(),
-        _service.getActivities(),
-        _service.getLocations(),
-        _service.getOrganizations(),
-      ]);
-
-      if (results.length >= 4) {
-        _equipment = results[0] as List<Equipment>;
-        _activities = results[1] as List<Activity>;
-        _locations = results[2] as List<Location>;
-        _organizations = results[3] as List<Organization>;
+      print('DEBUG: Loading reference data...');
+      
+      try {
+        _equipment = await _service.getEquipment();
+        print('DEBUG: Equipment loaded: ${_equipment.length}');
+      } catch (e) { 
+        print('DEBUG: Failed to load equipment: $e'); 
+        _equipment = [];
       }
+
+      try {
+        _activities = await _service.getActivities();
+        print('DEBUG: Activities loaded: ${_activities.length}');
+      } catch (e) { 
+        print('DEBUG: Failed to load activities: $e'); 
+        _activities = [];
+      }
+
+      try {
+        _locations = await _service.getLocations();
+        print('DEBUG: Locations loaded: ${_locations.length}');
+      } catch (e) { 
+        print('DEBUG: Failed to load locations: $e'); 
+        _locations = [];
+      }
+
+      try {
+        _organizations = await _service.getOrganizations();
+        print('DEBUG: Organizations loaded: ${_organizations.length}');
+      } catch (e) { 
+        print('DEBUG: Failed to load organizations: $e'); 
+        _organizations = [];
+      }
+
     } catch (e) {
-      print('Failed to load reference data: $e');
-      // Set empty lists on error
-      _equipment = [];
-      _activities = [];
-      _locations = [];
-      _organizations = [];
+      print('DEBUG: Fatal error in loadReferenceData: $e');
     } finally {
       _isLoadingReferenceData = false;
       notifyListeners();
