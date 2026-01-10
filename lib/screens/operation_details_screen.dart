@@ -700,13 +700,27 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
       );
 
       final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
-      await provider.addTask(widget.scrum, request);
+      final success = await provider.addTask(widget.scrum, request);
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Task added successfully!')),
-        );
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Task added successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          // Saved offline
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('📴 Task saved offline. Will sync when online.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

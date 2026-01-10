@@ -11,8 +11,12 @@ import 'screens/attendance_history_screen.dart';
 
 import 'providers/equipment_operation_provider.dart';
 import 'screens/operations_list_screen.dart';
+import 'services/offline_sync_service.dart';
 
 void main() {
+  // Initialize offline sync service
+  OfflineSyncService.instance.initialize();
+  
   runApp(const MyApp());
 }
 

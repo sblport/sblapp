@@ -143,17 +143,22 @@ class EquipmentOperationProvider with ChangeNotifier {
   }
 
   /// Add task to current operation
-  Future<void> addTask(String scrum, CreateTaskRequest request) async {
+  Future<bool> addTask(String scrum, CreateTaskRequest request) async {
     try {
       final task = await _service.addTask(scrum, request);
       
+      if (task == null) {
+        // Task was saved offline, return false to indicate offline save
+        return false;
+      }
+      
       // Update current operation if it's loaded
       if (_currentOperation != null && _currentOperation!.scrum == scrum) {
-        final updatedTasks = List<dynamic>.from(_currentOperation!.tasks ?? []);
-        updatedTasks.add(task);
         // Reload the operation to get fresh data
         await loadOperation(scrum);
       }
+      
+      return true; // Successfully added online
     } catch (e) {
       rethrow;
     }

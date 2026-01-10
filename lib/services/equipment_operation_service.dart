@@ -8,6 +8,7 @@ import '../models/activity.dart';
 import '../models/location.dart';
 import '../models/task.dart';
 import '../models/equipment_operation_requests.dart';
+import 'database_helper.dart';
 
 class EquipmentOperationService {
   final Dio _dio;
@@ -199,8 +200,8 @@ class EquipmentOperationService {
     }
   }
 
-  /// Add task to operation
-  Future<Task> addTask(String scrum, CreateTaskRequest request) async {
+  /// Add task to operation (with offline support)
+  Future<Task?> addTask(String scrum, CreateTaskRequest request) async {
     try {
       final response = await _dio.post(
         '${ApiConstants.eqpOperationsEndpoint}/$scrum/tasks',
@@ -211,8 +212,39 @@ class EquipmentOperationService {
       );
 
       return Task.fromJson(response.data['task']);
+    } on DioException catch (e) {
+      // Check if it's a network error
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.error.toString().contains('SocketException')) {
+        // Save to offline queue
+        await DatabaseHelper.instance.addPendingTask(scrum, request.toJson());
+        
+        // Return null to indicate offline save
+        return null;
+      }
+      throw Exception('Failed to add task: $e');
     } catch (e) {
       throw Exception('Failed to add task: $e');
+    }
+  }
+
+  /// Create task from Map data (used by sync service)
+  Future<Task> createTask(String scrum, Map<String, dynamic> taskData) async {
+    try {
+      final response = await _dio.post(
+        '${ApiConstants.eqpOperationsEndpoint}/$scrum/tasks',
+        data: taskData,
+        options: Options(
+          contentType: Headers.jsonContentType,
+        ),
+      );
+
+      return Task.fromJson(response.data['task']);
+    } catch (e) {
+      throw Exception('Failed to create task: $e');
     }
   }
 
