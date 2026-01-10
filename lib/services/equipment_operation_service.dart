@@ -159,8 +159,16 @@ class EquipmentOperationService {
   Future<List<Equipment>> getEquipment() async {
     try {
       final response = await _dio.get(ApiConstants.eqpEquipmentEndpoint);
-      final data = response.data as List;
-      return data.map((json) => Equipment.fromJson(json)).toList();
+      var responseData = response.data;
+      var list = [];
+
+      if (responseData is List) {
+        list = responseData;
+      } else if (responseData is Map<String, dynamic> && responseData['data'] is List) {
+        list = responseData['data'];
+      }
+
+      return list.map((json) => Equipment.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Failed to load equipment: $e');
     }
@@ -170,8 +178,16 @@ class EquipmentOperationService {
   Future<List<Activity>> getActivities() async {
     try {
       final response = await _dio.get(ApiConstants.eqpActivitiesEndpoint);
-      final data = response.data as List;
-      return data.map((json) => Activity.fromJson(json)).toList();
+      var responseData = response.data;
+      var list = [];
+
+      if (responseData is List) {
+        list = responseData;
+      } else if (responseData is Map<String, dynamic> && responseData['data'] is List) {
+        list = responseData['data'];
+      }
+
+      return list.map((json) => Activity.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Failed to load activities: $e');
     }
@@ -181,8 +197,16 @@ class EquipmentOperationService {
   Future<List<Location>> getLocations() async {
     try {
       final response = await _dio.get(ApiConstants.eqpLocationsEndpoint);
-      final data = response.data as List;
-      return data.map((json) => Location.fromJson(json)).toList();
+      var responseData = response.data;
+      var list = [];
+
+      if (responseData is List) {
+        list = responseData;
+      } else if (responseData is Map<String, dynamic> && responseData['data'] is List) {
+        list = responseData['data'];
+      }
+
+      return list.map((json) => Location.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Failed to load locations: $e');
     }
