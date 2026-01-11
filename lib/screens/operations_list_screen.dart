@@ -232,19 +232,31 @@ class _OperationsListScreenState extends State<OperationsListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const CreateOperationScreen(),
-            ),
-          ).then((_) => _onRefresh());
+      floatingActionButton: Consumer<EquipmentOperationProvider>(
+        builder: (context, provider, child) {
+          // Hide button if unauthorized
+          if (provider.operationsError != null && 
+              (provider.operationsError!.contains('Unauthorized') || 
+               provider.operationsError!.contains('403') ||
+               provider.operationsError!.contains('401'))) {
+            return const SizedBox.shrink();
+          }
+
+          return FloatingActionButton.extended(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CreateOperationScreen(),
+                ),
+              ).then((_) => _onRefresh());
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Start New Operation'),
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          );
         },
-        icon: const Icon(Icons.add),
-        label: const Text('Start New Operation'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
       ),
     );
   }
