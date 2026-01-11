@@ -283,6 +283,38 @@ class EquipmentOperationService {
     }
   }
 
+  /// Delete task
+  Future<void> deleteTask(String scrum, String taskId) async {
+    try {
+      await _dio.delete(
+        '${ApiConstants.eqpOperationsEndpoint}/$scrum/tasks/$taskId',
+      );
+    } catch (e) {
+      throw Exception('Failed to delete task: $e');
+    }
+  }
+
+  /// Approve operation
+  Future<EquipmentOperation> approveOperation(String scrum) async {
+    try {
+      final response = await _dio.post(
+        '${ApiConstants.eqpOperationsEndpoint}/$scrum/approve',
+      );
+      
+      final opData = response.data['operation'];
+      if (opData == null) {
+          // If the API returns success but no operation data, we might need to fetch it separately
+          // Or it might be a weird backend behavior.
+          // For now, let's try to fetch it again if data is missing, or throw more descriptive error
+           return await getOperation(scrum);
+      }
+      
+      return EquipmentOperation.fromJson(opData);
+    } catch (e) {
+      throw Exception('Failed to approve operation: $e');
+    }
+  }
+
   /// Finish operation
   /// Finish operation
   Future<EquipmentOperation> finishOperation(

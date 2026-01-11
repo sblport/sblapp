@@ -7,6 +7,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 import '../constants/app_colors.dart';
 import '../providers/equipment_operation_provider.dart';
+import '../services/auth_service.dart';
 import '../models/equipment_operation.dart';
 import '../models/task.dart';
 import '../models/equipment_operation_requests.dart';
@@ -51,6 +52,67 @@ class _OperationDetailsScreenState extends State<OperationDetailsScreen> {
     );
   }
 
+  Future<void> _deleteTask(String taskId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Task'),
+        content: const Text('Are you sure you want to delete this task?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
+      final success = await provider.deleteTask(widget.scrum, taskId);
+      
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Task deleted successfully')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(provider.operationError ?? 'Failed to delete task')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _approveOperation() async {
+    final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
+    final success = await provider.approveOperation(widget.scrum);
+    
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Operation Approved!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.operationError ?? 'Failed to approve operation'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _viewFullImage(String? url) {
     if (url == null) return;
     
@@ -79,6 +141,10 @@ class _OperationDetailsScreenState extends State<OperationDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.user;
+    final isSupervisor = user?.hakakses.any((h) => h.deptId == 9 && h.level >= 2) ?? false;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -115,6 +181,11 @@ class _OperationDetailsScreenState extends State<OperationDetailsScreen> {
             return const Center(child: Text('Operation not found'));
           }
 
+          // Approve Button Logic
+          // Show if Finished + Not Approved
+          // Optional: Check permission (isSupervisor)
+          final canApprove = operation.isFinished && !operation.isApproved && isSupervisor;
+
           return Column(
             children: [
               Expanded(
@@ -132,12 +203,13 @@ class _OperationDetailsScreenState extends State<OperationDetailsScreen> {
                     _TasksSection(
                       operation: operation,
                       onAddTask: !operation.isFinished ? _showAddTaskDialog : null,
+                      onDeleteTask: !operation.isFinished ? _deleteTask : null,
                     ),
                   ],
                 ),
               ),
 
-              // Finish Button
+              // Bottom Actions
               if (!operation.isFinished)
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -169,6 +241,38 @@ class _OperationDetailsScreenState extends State<OperationDetailsScreen> {
                     ),
                   ),
                 ),
+
+              if (canApprove)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: SafeArea(
+                    child: ElevatedButton(
+                      onPressed: _approveOperation,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Approve Operation',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           );
         },
@@ -188,6 +292,20 @@ class _OperationInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Color statusColor;
+    String statusText;
+
+    if (operation.isApproved) {
+      statusColor = Colors.green;
+      statusText = 'Approved';
+    } else if (operation.isFinished) {
+      statusColor = Colors.amber[700]!;
+      statusText = 'Finished (Pending)';
+    } else {
+      statusColor = Colors.blue;
+      statusText = 'Ongoing';
+    }
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -196,6 +314,44 @@ class _OperationInfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+             // Status Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: statusColor.withOpacity(0.5)),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: operation.shift == 'Day' ? Colors.amber[600] : Colors.indigo[600],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      operation.shift,
+                      style: TextStyle(
+                        color: operation.shift == 'Day' ? Colors.black87 : Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
             // Equipment Header
             Row(
               children: [
@@ -219,20 +375,6 @@ class _OperationInfoCard extends StatelessWidget {
                           ),
                         ),
                     ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: operation.shift == 'Day' ? Colors.amber[600] : Colors.indigo[600],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    operation.shift,
-                    style: TextStyle(
-                      color: operation.shift == 'Day' ? Colors.black87 : Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
                   ),
                 ),
               ],
@@ -383,10 +525,12 @@ class _PhotoThumbnail extends StatelessWidget {
 class _TasksSection extends StatelessWidget {
   final EquipmentOperation operation;
   final VoidCallback? onAddTask;
+  final Function(String taskId)? onDeleteTask;
 
   const _TasksSection({
     required this.operation,
     this.onAddTask,
+    this.onDeleteTask,
   });
 
   @override
@@ -442,6 +586,7 @@ class _TasksSection extends StatelessWidget {
                   task: task,
                   isFirst: index == 0,
                   isLast: index == tasks.length - 1,
+                  onDelete: onDeleteTask != null ? () => onDeleteTask!(task.id.toString()) : null,
                 );
               }).toList(),
           ],
@@ -455,11 +600,13 @@ class _TaskTimelineItem extends StatelessWidget {
   final Task task;
   final bool isFirst;
   final bool isLast;
+  final VoidCallback? onDelete;
 
   const _TaskTimelineItem({
     required this.task,
     required this.isFirst,
     required this.isLast,
+    this.onDelete,
   });
 
   @override
@@ -490,12 +637,23 @@ class _TaskTimelineItem extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              task.activity?.name ?? 'Unknown Activity',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    task.activity?.name ?? 'Unknown Activity',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (onDelete != null)
+                  InkWell(
+                    onTap: onDelete,
+                    child: Icon(Icons.delete_outline, color: Colors.red[300], size: 20),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             Row(
@@ -564,7 +722,6 @@ class _TaskTimelineItem extends StatelessWidget {
     );
   }
 
-
   String _formatTime(DateTime dateTime) {
     // Ensure we display local time for user
     final local = dateTime.toLocal();
@@ -597,6 +754,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
   bool _isSubmitting = false;
   String? _timeValidationError; // Track time validation error
   bool _isFirstTask = false;
+
 
   @override
   void initState(){
@@ -694,10 +852,23 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
         
         if (isStart) {
           _taskStart = newDateTime;
-          // Auto-update task end to be 30 minutes after start
+          // Auto-update task end to be 30 minutes after start (default behavior)
           _taskEnd = _taskStart.add(const Duration(minutes: 30));
         } else {
           _taskEnd = newDateTime;
+        }
+
+        // Calculate HM End based on Duration
+        if (_taskEnd.isAfter(_taskStart) && _hmStartController.text.isNotEmpty) {
+           final hmStart = double.tryParse(_hmStartController.text);
+           if (hmStart != null) {
+              final duration = _taskEnd.difference(_taskStart);
+              // Convert duration to hours (decimal)
+              final hours = duration.inMinutes / 60.0;
+              final hmEnd = hmStart + hours;
+              // Round to 1 decimal place
+              _hmEndController.text = hmEnd.toStringAsFixed(1);
+           }
         }
         
         // Clear validation error when time changes
@@ -904,6 +1075,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                           // Activity Dropdown
                           DropdownButtonFormField<Activity>(
                             value: _selectedActivity,
+                            isExpanded: true,
                             decoration: InputDecoration(
                               labelText: 'Activity *',
                               border: OutlineInputBorder(
@@ -914,7 +1086,10 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                             items: provider.activities.map((activity) {
                               return DropdownMenuItem(
                                 value: activity,
-                                child: Text(activity.name),
+                                child: Text(
+                                  activity.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               );
                             }).toList(),
                             onChanged: (value) {
@@ -928,6 +1103,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                           // Location Dropdown
                           DropdownButtonFormField<Location>(
                             value: _selectedLocation,
+                            isExpanded: true,
                             decoration: InputDecoration(
                               labelText: 'Location *',
                               border: OutlineInputBorder(
@@ -938,7 +1114,10 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                             items: provider.locations.map((location) {
                               return DropdownMenuItem(
                                 value: location,
-                                child: Text(location.name),
+                                child: Text(
+                                  location.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               );
                             }).toList(),
                             onChanged: (value) {
@@ -949,11 +1128,12 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Order By Dropdown
+                          // Instructed By Dropdown
                           DropdownButtonFormField<Organization>(
                             value: _selectedOrganization,
+                            isExpanded: true,
                             decoration: InputDecoration(
-                              labelText: 'Order By',
+                              labelText: 'Instructed By',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -962,7 +1142,10 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                             items: provider.organizations.map((org) {
                               return DropdownMenuItem(
                                 value: org,
-                                child: Text(org.chartname),
+                                child: Text(
+                                  org.chartname,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               );
                             }).toList(),
                             onChanged: (value) {

@@ -347,7 +347,7 @@ class _OperationCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  _StatusIndicator(isFinished: operation.isFinished),
+                  _StatusIndicator(operation: operation),
                 ],
               ),
             ],
@@ -385,36 +385,60 @@ class _ShiftBadge extends StatelessWidget {
 }
 
 class _StatusIndicator extends StatelessWidget {
-  final bool isFinished;
+  final EquipmentOperation operation;
 
-  const _StatusIndicator({required this.isFinished});
+  const _StatusIndicator({
+    required this.operation,
+  });
 
   @override
   Widget build(BuildContext context) {
+    Color color;
+    Color bgColor;
+    String text;
+    IconData icon;
+
+    if (operation.isApproved) {
+      color = Colors.green[700]!;
+      bgColor = Colors.green[50]!;
+      text = 'Approved';
+      icon = Icons.verified;
+    } else if (operation.isFinished) {
+      color = Colors.amber[800]!;
+      bgColor = Colors.amber[50]!;
+      text = 'Finished (Pending)';
+      icon = Icons.check_circle_outline;
+    } else {
+      color = Colors.blue[700]!;
+      bgColor = Colors.blue[50]!;
+      text = 'In Progress';
+      icon = Icons.timelapse;
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: isFinished ? Colors.green[50] : Colors.blue[50],
+        color: bgColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isFinished ? Colors.green[300]! : Colors.blue[300]!,
+          color: color.withOpacity(0.5),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isFinished ? Icons.check_circle : Icons.circle,
+            icon,
             size: 16,
-            color: isFinished ? Colors.green[700] : Colors.blue[700],
+            color: color,
           ),
           const SizedBox(width: 4),
           Text(
-            isFinished ? 'Finished' : 'In Progress',
+            text,
             style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: isFinished ? Colors.green[700] : Colors.blue[700],
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
           ),
         ],

@@ -19,6 +19,7 @@ class EquipmentOperation {
   final User? user;
   final List<Task>? tasks;
   final DateTime createdAt;
+  final DateTime? approvedAt;
 
   EquipmentOperation({
     required this.id,
@@ -37,6 +38,7 @@ class EquipmentOperation {
     this.user,
     this.tasks,
     required this.createdAt,
+    this.approvedAt,
   });
 
   factory EquipmentOperation.fromJson(Map<String, dynamic> json) {
@@ -60,6 +62,9 @@ class EquipmentOperation {
           : null,
       user: json['user'] != null 
           ? User.fromJson(json['user'] as Map<String, dynamic>) 
+          : null,
+      approvedAt: json['approved_at'] != null 
+          ? DateTime.tryParse(json['approved_at'].toString())
           : null,
       tasks: json['tasks'] != null 
           ? (json['tasks'] as List).map((task) => Task.fromJson(task as Map<String, dynamic>)).toList() 
@@ -85,12 +90,18 @@ class EquipmentOperation {
       'photo_url': photoUrl,
       'photo2_url': photo2Url,
       'created_at': createdAt.toIso8601String(),
+      'approved_at': approvedAt?.toIso8601String(),
     };
   }
 
   bool get isFinished => opsHmEnd != null;
+  bool get isApproved => approvedAt != null;
 
-  String get statusText => isFinished ? 'Finished' : 'In Progress';
+  String get statusText {
+    if (isApproved) return 'Approved';
+    if (isFinished) return 'Finished (Pending)';
+    return 'In Progress';
+  }
 
   double? get totalHours {
     if (opsHmEnd != null) {

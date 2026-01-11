@@ -167,6 +167,51 @@ class EquipmentOperationProvider with ChangeNotifier {
     }
   }
 
+  /// Delete task
+  Future<bool> deleteTask(String scrum, String taskId) async {
+    try {
+      await _service.deleteTask(scrum, taskId);
+      
+      // Update current operation by removing the task locally to update UI immediately
+      if (_currentOperation != null && _currentOperation!.scrum == scrum) {
+        // We have to reload to be safe or mutable remove
+        await loadOperation(scrum);
+      }
+      return true;
+    } catch (e) {
+      _operationError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Approve operation
+  Future<bool> approveOperation(String scrum) async {
+    _isLoadingOperation = true;
+    notifyListeners();
+    try {
+      final operation = await _service.approveOperation(scrum);
+      
+      // Update in operations list
+      final index = _operations.indexWhere((op) => op.scrum == scrum);
+      if (index != -1) {
+        _operations[index] = operation;
+      }
+      
+      if (_currentOperation != null && _currentOperation!.scrum == scrum) {
+        _currentOperation = operation;
+      }
+      
+      return true;
+    } catch (e) {
+      _operationError = e.toString();
+      return false;
+    } finally {
+      _isLoadingOperation = false;
+      notifyListeners();
+    }
+  }
+
   /// Finish operation
   Future<bool> finishOperation(
     String scrum,
@@ -188,7 +233,9 @@ class EquipmentOperationProvider with ChangeNotifier {
       
       // Update current operation
       if (_currentOperation != null && _currentOperation!.scrum == scrum) {
-        _currentOperation = operation;
+        // Reload entirely to ensure all relationships (tasks, etc.) are present
+        // The returned operation object might miss some nested data depending on API
+        await loadOperation(scrum);
       }
       
       notifyListeners();
