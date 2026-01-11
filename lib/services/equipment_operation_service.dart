@@ -206,10 +206,23 @@ class EquipmentOperationService {
   Future<List<Organization>> getOrganizations() async {
     try {
       final response = await _dio.get(ApiConstants.eqpOrgsEndpoint);
+      print('DEBUG: Orgs Response API: ${response.data}');
       
-      final List<dynamic> data = response.data;
-      return data.map((json) => Organization.fromJson(json)).toList();
+      dynamic responseData = response.data;
+      List<dynamic> listData;
+      
+      if (responseData is List) {
+        listData = responseData;
+      } else if (responseData is Map && responseData.containsKey('data') && responseData['data'] is List) {
+        listData = responseData['data'];
+      } else {
+        print('DEBUG: Unexpected format. Type: ${responseData.runtimeType}');
+        return []; // Return empty list instead of throwing to prevent blocking ui?
+      }
+
+      return listData.map((json) => Organization.fromJson(json)).toList();
     } catch (e) {
+      print('DEBUG: Error in getOrganizations: $e');
       throw Exception('Failed to load organizations: $e');
     }
   }
@@ -217,9 +230,12 @@ class EquipmentOperationService {
   /// Add task to operation (with offline support)
   Future<Task?> addTask(String scrum, CreateTaskRequest request) async {
     try {
+      final jsonData = request.toJson();
+      print('DEBUG: Creating task with data: $jsonData');
+      
       final response = await _dio.post(
         '${ApiConstants.eqpOperationsEndpoint}/$scrum/tasks',
-        data: request.toJson(),
+        data: jsonData,
         options: Options(
           contentType: Headers.jsonContentType,
         ),
@@ -227,6 +243,10 @@ class EquipmentOperationService {
 
       return Task.fromJson(response.data['task']);
     } on DioException catch (e) {
+      print('DEBUG: DioException - Type: ${e.type}, Message: ${e.message}');
+      print('DEBUG: Response data: ${e.response?.data}');
+      print('DEBUG: Status code: ${e.response?.statusCode}');
+      
       // Check if it's a network error
       if (e.type == DioExceptionType.connectionError ||
           e.type == DioExceptionType.connectionTimeout ||
@@ -241,6 +261,7 @@ class EquipmentOperationService {
       }
       throw Exception('Failed to add task: $e');
     } catch (e) {
+      print('DEBUG: General exception: $e');
       throw Exception('Failed to add task: $e');
     }
   }

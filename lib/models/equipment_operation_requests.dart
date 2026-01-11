@@ -62,7 +62,7 @@ class CreateTaskRequest {
   });
 
   Map<String, dynamic> toJson() {
-    return {
+    final map = {
       'task_start': taskStart.toIso8601String(),
       'task_end': taskEnd.toIso8601String(),
       'hm_start': hmStart,
@@ -72,8 +72,14 @@ class CreateTaskRequest {
       'code': code,
       'result': result,
       'remarks': remarks,
-      'order_by': orderBy,
     };
+    
+    // Order by field
+    if (orderBy != null) {
+      map['order_by'] = orderBy;
+    }
+    
+    return map;
   }
 }
 

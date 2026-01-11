@@ -566,7 +566,9 @@ class _TaskTimelineItem extends StatelessWidget {
 
 
   String _formatTime(DateTime dateTime) {
-    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    // Ensure we display local time for user
+    final local = dateTime.toLocal();
+    return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -593,6 +595,8 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
   Location? _selectedLocation;
   Organization? _selectedOrganization;
   bool _isSubmitting = false;
+  String? _timeValidationError; // Track time validation error
+  bool _isFirstTask = false;
 
   @override
   void initState(){
@@ -604,7 +608,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
   void _checkReferenceData() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
-      if (provider.activities.isEmpty || provider.locations.isEmpty) {
+      if (provider.activities.isEmpty || provider.locations.isEmpty || provider.organizations.isEmpty) {
         provider.loadReferenceData();
       }
     });
@@ -626,47 +630,79 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
     
     if (operation != null) {
       final tasks = operation.tasks ?? [];
+      final operationDate = operation.date; // Get operation date
+      
+      // Set task start time
       if (tasks.isNotEmpty) {
+        _isFirstTask = false;
+        // Use previous task's end time
         final lastTask = tasks.last;
+        _taskStart = DateTime(
+          operationDate.year,
+          operationDate.month,
+          operationDate.day,
+          lastTask.taskEnd.hour,
+          lastTask.taskEnd.minute,
+        );
+        
+        // HM Start from previous task's HM End
         if (lastTask.hmEnd != null) {
           _hmStartController.text = lastTask.hmEnd!.toStringAsFixed(1);
         }
       } else {
+        _isFirstTask = true;
+        // First task: use current time
+        final now = DateTime.now();
+        _taskStart = DateTime(
+          operationDate.year,
+          operationDate.month,
+          operationDate.day,
+          now.hour,
+          now.minute,
+        );
+        
+        // HM Start from operation
         _hmStartController.text = operation.opsHmStart.toStringAsFixed(1);
       }
+      
+      // Task end = task start + 30 minutes
+      _taskEnd = _taskStart.add(const Duration(minutes: 30));
     }
   }
 
-  Future<void> _selectDateTime(bool isStart) async {
-    final date = await showDatePicker(
+  Future<void> _selectTime(bool isStart) async {
+    final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
+    final operation = provider.currentOperation;
+    
+    if (operation == null) return;
+    
+    final time = await showTimePicker(
       context: context,
-      initialDate: isStart ? _taskStart : _taskEnd,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
+      initialTime: TimeOfDay.fromDateTime(isStart ? _taskStart : _taskEnd),
     );
 
-    if (date != null && mounted) {
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(isStart ? _taskStart : _taskEnd),
-      );
-
-      if (time != null && mounted) {
-        setState(() {
-          final newDateTime = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            time.hour,
-            time.minute,
-          );
-          if (isStart) {
-            _taskStart = newDateTime;
-          } else {
-            _taskEnd = newDateTime;
-          }
-        });
-      }
+    if (time != null && mounted) {
+      setState(() {
+        final operationDate = operation.date;
+        final newDateTime = DateTime(
+          operationDate.year,
+          operationDate.month,
+          operationDate.day,
+          time.hour,
+          time.minute,
+        );
+        
+        if (isStart) {
+          _taskStart = newDateTime;
+          // Auto-update task end to be 30 minutes after start
+          _taskEnd = _taskStart.add(const Duration(minutes: 30));
+        } else {
+          _taskEnd = newDateTime;
+        }
+        
+        // Clear validation error when time changes
+        _timeValidationError = null;
+      });
     }
   }
 
@@ -681,6 +717,19 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
       );
       return;
     }
+    
+    // Validate task end is after task start
+    if (_taskEnd.isBefore(_taskStart) || _taskEnd.isAtSameMomentAs(_taskStart)) {
+      setState(() {
+        _timeValidationError = 'Task End must be after Task Start';
+      });
+      return;
+    }
+    
+    // Clear any previous time validation error
+    setState(() {
+      _timeValidationError = null;
+    });
 
     setState(() => _isSubmitting = true);
 
@@ -794,27 +843,48 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                         controller: scrollController,
                         padding: const EdgeInsets.all(16),
                         children: [
-                          // Task Start Time
+                          // Task Start Time (Time only)
                           InkWell(
-                            onTap: () => _selectDateTime(true),
+                            onTap: _isFirstTask ? () => _selectTime(true) : null,
                             child: InputDecorator(
                               decoration: InputDecoration(
-                                labelText: 'Task Start *',
+                                labelText: _isFirstTask ? 'Task Start *' : 'Task Start (Auto-filled)',
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 prefixIcon: const Icon(Icons.schedule),
+                                filled: !_isFirstTask,
+                                fillColor: !_isFirstTask ? Colors.grey[100] : null,
                               ),
                               child: Text(
-                                '${_taskStart.day}/${_taskStart.month}/${_taskStart.year} ${_formatTime(_taskStart)}',
+                                _formatTime(_taskStart),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: !_isFirstTask ? Colors.grey[700] : null,
+                                ),
                               ),
                             ),
                           ),
+                          
+                          // Show validation error if exists
+                          if (_timeValidationError != null) ...[
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 12),
+                              child: Text(
+                                _timeValidationError!,
+                                style: TextStyle(
+                                  color: Colors.red[700],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 16),
 
-                          // Task End Time
+                          // Task End Time (Time only)
                           InkWell(
-                            onTap: () => _selectDateTime(false),
+                            onTap: () => _selectTime(false),
                             child: InputDecorator(
                               decoration: InputDecoration(
                                 labelText: 'Task End *',
@@ -824,7 +894,8 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                                 prefixIcon: const Icon(Icons.schedule),
                               ),
                               child: Text(
-                                '${_taskEnd.day}/${_taskEnd.month}/${_taskEnd.year} ${_formatTime(_taskEnd)}',
+                                _formatTime(_taskEnd),
+                                style: const TextStyle(fontSize: 16),
                               ),
                             ),
                           ),
@@ -902,31 +973,48 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                           ),
                           const SizedBox(height: 16),
 
-                          // HM Start
+                          // HM Start (Read-only for subsequent tasks, Editable for first)
                           TextFormField(
                             controller: _hmStartController,
                             decoration: InputDecoration(
-                              labelText: 'HM Start (Optional)',
+                              labelText: _isFirstTask ? 'HM Start' : 'HM Start (Auto-filled)',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               prefixIcon: const Icon(Icons.speed),
+                              filled: !_isFirstTask,
+                              fillColor: !_isFirstTask ? Colors.grey[100] : null,
                             ),
+                            readOnly: !_isFirstTask,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           ),
                           const SizedBox(height: 16),
 
-                          // HM End
+                          // HM End (Mandatory)
                           TextFormField(
                             controller: _hmEndController,
                             decoration: InputDecoration(
-                              labelText: 'HM End (Optional)',
+                              labelText: 'HM End *',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               prefixIcon: const Icon(Icons.speed),
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'HM End is required';
+                              }
+                              final hmEnd = double.tryParse(value);
+                              if (hmEnd == null) {
+                                return 'Please enter a valid number';
+                              }
+                              final hmStart = double.tryParse(_hmStartController.text);
+                              if (hmStart != null && hmEnd < hmStart) {
+                                return 'HM End must be greater than or equal to HM Start';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 16),
 
@@ -1010,7 +1098,9 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
   }
 
   String _formatTime(DateTime dateTime) {
-    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    // Ensure we display local time
+    final local = dateTime.toLocal();
+    return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
 }
 

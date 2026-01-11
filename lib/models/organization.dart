@@ -12,8 +12,8 @@ class Organization {
   factory Organization.fromJson(Map<String, dynamic> json) {
     return Organization(
       id: int.tryParse(json['id'].toString()) ?? 0,
-      name: json['name'] as String,
-      chartname: json['chartname'] as String,
+      name: json['name']?.toString() ?? '',
+      chartname: json['chartname']?.toString() ?? json['name']?.toString() ?? 'Unknown',
     );
   }
 
