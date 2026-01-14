@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'constants/app_colors.dart';
@@ -8,6 +9,7 @@ import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/attendance_history_screen.dart';
+import 'l10n/app_localizations.dart';
 
 import 'providers/equipment_operation_provider.dart';
 import 'screens/operations_list_screen.dart';
@@ -35,6 +37,20 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'SBL Port',
         debugShowCheckedModeBanner: false,
+        
+        // Localization Configuration
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('id', ''), // Indonesian
+          Locale('en', ''), // English
+        ],
+        locale: const Locale('id', ''), // Set Indonesian as default
+        
         theme: ThemeData(
           primaryColor: AppColors.primary,
           scaffoldBackgroundColor: AppColors.background,

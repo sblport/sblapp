@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../l10n/app_localizations.dart';
 import 'home_screen.dart';
 import 'attendance_history_screen.dart';
 import 'profile_screen.dart';
@@ -18,7 +19,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const AttendanceHistoryScreen(),
     const SizedBox(), // Placeholder for center Scanning/QRIS
-    const Center(child: Text("For You Screen")), // Placeholder
+    const Center(child: Text("Untuk Anda")), // Placeholder in Indonesian
     const ProfileScreen(),
   ];
 
@@ -35,6 +36,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
     return Scaffold(
       body: _screens[_selectedIndex],
       floatingActionButton: Container(
@@ -61,15 +64,15 @@ class _MainScreenState extends State<MainScreen> {
           child: Row(
              mainAxisAlignment: MainAxisAlignment.spaceBetween,
              children: [
-               _buildNavItem(0, Icons.home_rounded, "Home"),
-               _buildNavItem(1, Icons.calendar_month, "Attendance"),
+               _buildNavItem(0, Icons.home_rounded, l10n.home),
+               _buildNavItem(1, Icons.calendar_month, l10n.attendance),
                
                // Center Space for FAB with Label below
                // Center Space for FAB
                const Spacer(),
 
-               _buildNavItem(3, Icons.stars_rounded, "For You"), // Star icon
-               _buildNavItem(4, Icons.person_rounded, "My Account"), // Profile icon matches
+               _buildNavItem(3, Icons.stars_rounded, l10n.forYou), // Star icon
+               _buildNavItem(4, Icons.person_rounded, l10n.myAccount), // Profile icon matches
              ],
           ),
         ),

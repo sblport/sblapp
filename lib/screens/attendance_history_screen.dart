@@ -6,6 +6,7 @@ import '../constants/app_colors.dart';
 import '../models/attendance_model.dart';
 import '../services/attendance_service.dart';
 import '../services/auth_service.dart';
+import '../l10n/app_localizations.dart';
 
 class AttendanceHistoryScreen extends StatefulWidget {
   const AttendanceHistoryScreen({super.key});
@@ -95,8 +96,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         setState(() {
           _isLoading = false;
         });
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading attendance: $e')),
+          SnackBar(content: Text('${l10n.errorLoadingAttendance}: $e')),
         );
       }
     }
@@ -141,6 +143,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   }
 
   void _showDetailsSheet(AttendanceLog log) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -165,7 +168,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Info $formattedDate",
+                    "${l10n.info} $formattedDate",
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary),
                   ),
                   IconButton(
@@ -176,12 +179,12 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
               ),
               const Divider(),
               const SizedBox(height: 16),
-              _buildInfoRow('Check In', _formatDateTime(log.checkIn), isError: log.isLate),
-              _buildInfoRow('Check Out', _formatDateTime(log.checkOut)),
-              _buildInfoRow('Late Minutes', '${log.lateMinutes} mins', isError: log.isLate),
-                _buildInfoRow('Work Hours (Real)', _formatHours(log.workhourReal)),
-                _buildInfoRow('Work Hours (Calc)', _formatHours(log.workhourCalculated)),
-                _buildInfoRow('Rest', '1 hour', isError: true),
+              _buildInfoRow(l10n.checkIn, _formatDateTime(log.checkIn), isError: log.isLate),
+              _buildInfoRow(l10n.checkOut, _formatDateTime(log.checkOut)),
+              _buildInfoRow(l10n.lateMinutes, '${log.lateMinutes} ${l10n.mins}', isError: log.isLate),
+                _buildInfoRow(l10n.workHoursReal, _formatHours(log.workhourReal)),
+                _buildInfoRow(l10n.workHoursCalc, _formatHours(log.workhourCalculated)),
+                _buildInfoRow(l10n.rest, '1 ${l10n.hour}', isError: true),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -193,9 +196,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Work Hour Final', 
-                        style: TextStyle(
+                      Text(
+                        l10n.workHourFinal, 
+                        style: const TextStyle(
                           color: AppColors.primary, 
                           fontSize: 15,
                           fontWeight: FontWeight.bold
@@ -223,6 +226,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final user = Provider.of<AuthService>(context).user;
 
     return Scaffold(
@@ -242,9 +246,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'History',
-                  style: TextStyle(
+                Text(
+                  l10n.history,
+                  style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.bold),
@@ -415,8 +419,9 @@ Widget _buildCell(DateTime day, bool isSelected) {
   String _formatHours(String value) {
     if (value == '-' || value.isEmpty) return value;
     try {
+      final l10n = AppLocalizations.of(context)!;
       final doubleValue = double.parse(value);
-      return '${doubleValue.toStringAsFixed(0)} hours';
+      return '${doubleValue.toStringAsFixed(0)} ${l10n.hours}';
     } catch (_) {
       return value;
     }

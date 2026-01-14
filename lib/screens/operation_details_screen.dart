@@ -14,6 +14,7 @@ import '../models/equipment_operation_requests.dart';
 import '../models/activity.dart';
 import '../models/location.dart';
 import '../models/organization.dart';
+import '../l10n/app_localizations.dart';
 
 class OperationDetailsScreen extends StatefulWidget {
   final String scrum;
@@ -141,6 +142,7 @@ class _OperationDetailsScreenState extends State<OperationDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final authService = Provider.of<AuthService>(context, listen: false);
     final user = authService.user;
     final isSupervisor = user?.hakakses.any((h) => h.deptId == 9 && h.level >= 2) ?? false;
@@ -148,7 +150,7 @@ class _OperationDetailsScreenState extends State<OperationDetailsScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('Operation Details'),
+        title: Text(l10n.operationDetails),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
@@ -234,9 +236,9 @@ class _OperationDetailsScreenState extends State<OperationDetailsScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        'Finish Operation',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      child: Text(
+                        l10n.finishOperation,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -292,18 +294,19 @@ class _OperationInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     Color statusColor;
     String statusText;
 
     if (operation.isApproved) {
       statusColor = Colors.green;
-      statusText = 'Approved';
+      statusText = l10n.approved;
     } else if (operation.isFinished) {
       statusColor = Colors.amber[700]!;
-      statusText = 'Finished (Pending)';
+      statusText = l10n.finishedPending;
     } else {
       statusColor = Colors.blue;
-      statusText = 'Ongoing';
+      statusText = l10n.ongoing;
     }
 
     return Card(
@@ -341,7 +344,7 @@ class _OperationInfoCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      operation.shift,
+                      operation.shift == 'Day' ? l10n.day : operation.shift,
                       style: TextStyle(
                         color: operation.shift == 'Day' ? Colors.black87 : Colors.white,
                         fontWeight: FontWeight.bold,
@@ -382,36 +385,36 @@ class _OperationInfoCard extends StatelessWidget {
             const Divider(height: 24),
 
             // Details
-            _InfoRow(icon: Icons.calendar_today, label: 'Date', value: operation.displayDate),
+            _InfoRow(icon: Icons.calendar_today, label: l10n.date, value: operation.displayDate),
             const SizedBox(height: 8),
-            _InfoRow(icon: Icons.person, label: 'Operator', value: operation.user?.name ?? 'Unknown'),
+            _InfoRow(icon: Icons.person, label: l10n.operator, value: operation.user?.name ?? 'Unknown'),
             const SizedBox(height: 8),
             _InfoRow(
               icon: Icons.speed,
-              label: 'HM Start',
+              label: l10n.hmStart,
               value: operation.opsHmStart.toStringAsFixed(1),
             ),
             if (operation.opsHmEnd != null) ...[
               const SizedBox(height: 8),
               _InfoRow(
                 icon: Icons.speed,
-                label: 'HM End',
+                label: l10n.hmEnd,
                 value: operation.opsHmEnd!.toStringAsFixed(1),
               ),
               const SizedBox(height: 8),
               _InfoRow(
                 icon: Icons.access_time,
-                label: 'Total Hours',
-                value: '${operation.totalHours!.toStringAsFixed(1)} hours',
+                label: l10n.totalHours,
+                value: '${operation.totalHours!.toStringAsFixed(1)} ${l10n.hours}',
               ),
             ],
 
             // Photos
             if (operation.photoUrl != null || operation.photo2Url != null) ...[
               const Divider(height: 24),
-              const Text(
-                'Photos',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              Text(
+                l10n.photos,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Row(
@@ -420,7 +423,7 @@ class _OperationInfoCard extends StatelessWidget {
                     Expanded(
                       child: _PhotoThumbnail(
                         url: operation.photoUrl!,
-                        label: 'Start Photo',
+                        label: l10n.startPhoto,
                         onTap: () => onPhotoTap(operation.photoUrl),
                       ),
                     ),
@@ -535,6 +538,7 @@ class _TasksSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final tasks = operation.tasks ?? [];
 
     return Card(
@@ -547,16 +551,16 @@ class _TasksSection extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Text(
-                  'Tasks Timeline',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  l10n.taskTimeline,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 if (onAddTask != null)
                   TextButton.icon(
                     onPressed: onAddTask,
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Task'),
+                    label: Text(l10n.addTask),
                   ),
               ],
             ),
@@ -571,7 +575,7 @@ class _TasksSection extends StatelessWidget {
                       Icon(Icons.task_outlined, size: 48, color: Colors.grey[400]),
                       const SizedBox(height: 8),
                       Text(
-                        'No tasks yet',
+                        l10n.noTasksYet,
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                     ],
@@ -988,9 +992,9 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    const Text(
-                      'Add Task',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    Text(
+                      AppLocalizations.of(context)!.addTask,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     const Spacer(),
                     IconButton(
@@ -1019,7 +1023,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                             onTap: _isFirstTask ? () => _selectTime(true) : null,
                             child: InputDecorator(
                               decoration: InputDecoration(
-                                labelText: _isFirstTask ? 'Task Start *' : 'Task Start (Auto-filled)',
+                                labelText: _isFirstTask ? '${AppLocalizations.of(context)!.taskStart} *' : '${AppLocalizations.of(context)!.taskStart} (Auto-filled)',
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -1058,7 +1062,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                             onTap: () => _selectTime(false),
                             child: InputDecorator(
                               decoration: InputDecoration(
-                                labelText: 'Task End *',
+                                labelText: '${AppLocalizations.of(context)!.taskEnd} *',
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -1077,7 +1081,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                             value: _selectedActivity,
                             isExpanded: true,
                             decoration: InputDecoration(
-                              labelText: 'Activity *',
+                              labelText: '${AppLocalizations.of(context)!.activity} *',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1105,7 +1109,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                             value: _selectedLocation,
                             isExpanded: true,
                             decoration: InputDecoration(
-                              labelText: 'Location *',
+                              labelText: '${AppLocalizations.of(context)!.location} *',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1133,7 +1137,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                             value: _selectedOrganization,
                             isExpanded: true,
                             decoration: InputDecoration(
-                              labelText: 'Instructed By',
+                              labelText: AppLocalizations.of(context)!.instructedBy,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1160,7 +1164,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                           TextFormField(
                             controller: _hmStartController,
                             decoration: InputDecoration(
-                              labelText: _isFirstTask ? 'HM Start' : 'HM Start (Auto-filled)',
+                              labelText: _isFirstTask ? AppLocalizations.of(context)!.hmStart : '${AppLocalizations.of(context)!.hmStart} (Auto-filled)',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1177,7 +1181,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                           TextFormField(
                             controller: _hmEndController,
                             decoration: InputDecoration(
-                              labelText: 'HM End *',
+                              labelText: '${AppLocalizations.of(context)!.hmEnd} *',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1205,7 +1209,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                           TextFormField(
                             controller: _codeController,
                             decoration: InputDecoration(
-                              labelText: 'Code (Optional)',
+                              labelText: AppLocalizations.of(context)!.code,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1218,7 +1222,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                           TextFormField(
                             controller: _resultController,
                             decoration: InputDecoration(
-                              labelText: 'Result (Optional)',
+                              labelText: AppLocalizations.of(context)!.result,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1232,7 +1236,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                           TextFormField(
                             controller: _remarksController,
                             decoration: InputDecoration(
-                              labelText: 'Remarks (Optional)',
+                              labelText: AppLocalizations.of(context)!.remarks,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1262,9 +1266,9 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                     ),
                                   )
-                                : const Text(
-                                    'Add Task',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                : Text(
+                                    AppLocalizations.of(context)!.save,
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                   ),
                           ),
                         ],

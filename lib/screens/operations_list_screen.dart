@@ -4,6 +4,7 @@ import '../constants/app_colors.dart';
 import '../providers/equipment_operation_provider.dart';
 import '../models/equipment_operation.dart';
 import '../models/equipment.dart';
+import '../l10n/app_localizations.dart';
 import 'create_operation_screen.dart';
 import 'operation_details_screen.dart';
 
@@ -54,12 +55,14 @@ class _OperationsListScreenState extends State<OperationsListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
-          'Equipment Operations',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          l10n.equipmentOperations,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
@@ -82,7 +85,7 @@ class _OperationsListScreenState extends State<OperationsListScreen> {
                             value: provider.filterEquipment,
                             isExpanded: true,
                             decoration: InputDecoration(
-                              labelText: 'Filter Equipment',
+                              labelText: l10n.filterEquipment,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                               isDense: true,
@@ -131,7 +134,7 @@ class _OperationsListScreenState extends State<OperationsListScreen> {
                         child: Row(
                           children: [
                             Text(
-                              'Date: ${provider.filterDate!.toIso8601String().split('T')[0]}',
+                              '${l10n.date}: ${provider.filterDate!.toIso8601String().split('T')[0]}',
                               style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
                             ),
                           ],
@@ -157,7 +160,7 @@ class _OperationsListScreenState extends State<OperationsListScreen> {
                         Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
                         const SizedBox(height: 16),
                         Text(
-                          'Failed to load operations',
+                          l10n.failedToLoadOperations,
                           style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                         ),
                         const SizedBox(height: 8),
@@ -170,7 +173,7 @@ class _OperationsListScreenState extends State<OperationsListScreen> {
                         ElevatedButton.icon(
                           onPressed: _onRefresh,
                           icon: const Icon(Icons.refresh),
-                          label: const Text('Retry'),
+                          label: Text(l10n.retry),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
@@ -189,7 +192,7 @@ class _OperationsListScreenState extends State<OperationsListScreen> {
                         Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
                         const SizedBox(height: 16),
                         Text(
-                          'No operations found',
+                          l10n.noOperationsFound,
                           style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                         ),
                       ],
@@ -252,7 +255,7 @@ class _OperationsListScreenState extends State<OperationsListScreen> {
               ).then((_) => _onRefresh());
             },
             icon: const Icon(Icons.add),
-            label: const Text('Start New Operation'),
+            label: Text(l10n.startNewOperation),
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
           );
@@ -273,6 +276,8 @@ class _OperationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -292,7 +297,7 @@ class _OperationCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          operation.equipment?.code ?? 'Unknown Equipment',
+                          operation.equipment?.code ?? l10n.unknownEquipment,
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -326,7 +331,7 @@ class _OperationCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      operation.user?.name ?? 'Unknown',
+                      operation.user?.name ?? l10n.unknown,
                       style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -350,7 +355,7 @@ class _OperationCard extends StatelessWidget {
                         ),
                         if (operation.totalHours != null)
                           Text(
-                            'Total: ${operation.totalHours!.toStringAsFixed(1)} hours',
+                            '${l10n.total}: ${operation.totalHours!.toStringAsFixed(1)} ${l10n.hours}',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],
@@ -405,6 +410,7 @@ class _StatusIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     Color color;
     Color bgColor;
     String text;
@@ -413,17 +419,17 @@ class _StatusIndicator extends StatelessWidget {
     if (operation.isApproved) {
       color = Colors.green[700]!;
       bgColor = Colors.green[50]!;
-      text = 'Approved';
+      text = l10n.approved;
       icon = Icons.verified;
     } else if (operation.isFinished) {
       color = Colors.amber[800]!;
       bgColor = Colors.amber[50]!;
-      text = 'Finished (Pending)';
+      text = l10n.finishedPending;
       icon = Icons.check_circle_outline;
     } else {
       color = Colors.blue[700]!;
       bgColor = Colors.blue[50]!;
-      text = 'In Progress';
+      text = l10n.inProgress;
       icon = Icons.timelapse;
     }
 

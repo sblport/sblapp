@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../services/auth_service.dart';
+import '../l10n/app_localizations.dart';
 import 'change_password_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -9,17 +10,18 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final authService = Provider.of<AuthService>(context);
     final user = authService.user;
 
     if (user == null) {
       // Should not happen if guard is correct, but just in case
-      return const Scaffold(body: Center(child: Text('No user data')));
+      return Scaffold(body: Center(child: Text(l10n.noUserData)));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Profile'),
+        title: Text(l10n.myProfile),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -62,10 +64,10 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             const Divider(),
-            _buildProfileItem(context, 'NIK', user.nik, Icons.badge),
-            _buildProfileItem(context, 'Email', user.email, Icons.email),
-            _buildProfileItem(context, 'Department', user.dept, Icons.business),
-            _buildProfileItem(context, 'Joined', user.employmentStart, Icons.calendar_today),
+            _buildProfileItem(context, l10n.nik, user.nik, Icons.badge),
+            _buildProfileItem(context, l10n.email, user.email, Icons.email),
+            _buildProfileItem(context, l10n.department, user.dept, Icons.business),
+            _buildProfileItem(context, l10n.joined, user.employmentStart, Icons.calendar_today),
             const Divider(),
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -78,7 +80,7 @@ class ProfileScreen extends StatelessWidget {
                         Navigator.pushNamed(context, '/attendance');
                       },
                       icon: const Icon(Icons.history),
-                      label: const Text('Attendance History'),
+                      label: Text(l10n.attendanceHistory),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         foregroundColor: AppColors.primary,
@@ -97,7 +99,7 @@ class ProfileScreen extends StatelessWidget {
                         );
                       },
                       icon: const Icon(Icons.lock_reset),
-                      label: const Text('Change Password'),
+                      label: Text(l10n.changePassword),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         foregroundColor: AppColors.primary,

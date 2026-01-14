@@ -7,6 +7,7 @@ import '../constants/app_colors.dart';
 import '../providers/equipment_operation_provider.dart';
 import '../models/equipment.dart';
 import '../models/equipment_operation_requests.dart';
+import '../l10n/app_localizations.dart';
 import 'operation_details_screen.dart';
 
 class CreateOperationScreen extends StatefulWidget {
@@ -209,9 +210,11 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Start Operation'),
+        title: Text(l10n.startOperation),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
@@ -230,7 +233,7 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
                 DropdownButtonFormField<Equipment>(
                   value: _selectedEquipment,
                   decoration: InputDecoration(
-                    labelText: 'Equipment *',
+                    labelText: '${l10n.equipment} *',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -252,7 +255,7 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
                       _selectedEquipment = value;
                     });
                   },
-                  validator: (value) => value == null ? 'Please select equipment' : null,
+                  validator: (value) => value == null ? l10n.pleaseSelectEquipment : null,
                 ),
                 const SizedBox(height: 16),
 
@@ -261,7 +264,7 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
                   onTap: _selectDate,
                   child: InputDecorator(
                     decoration: InputDecoration(
-                      labelText: 'Date *',
+                      labelText: '${l10n.date} *',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -284,16 +287,16 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
                     ),
                     const SizedBox(height: 8),
                     SegmentedButton<String>(
-                      segments: const [
+                      segments: [
                         ButtonSegment(
                           value: 'Day',
-                          label: Text('Day (6 AM - 6 PM)'),
-                          icon: Icon(Icons.wb_sunny),
+                          label: Text(l10n.dayShift),
+                          icon: const Icon(Icons.wb_sunny),
                         ),
                         ButtonSegment(
                           value: 'Night',
-                          label: Text('Night (6 PM - 6 AM)'),
-                          icon: Icon(Icons.nightlight),
+                          label: Text(l10n.nightShift),
+                          icon: const Icon(Icons.nightlight),
                         ),
                       ],
                       selected: {_selectedShift},
@@ -311,17 +314,17 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
                 TextFormField(
                   controller: _hmStartController,
                   decoration: InputDecoration(
-                    labelText: 'Hour Meter Start *',
+                    labelText: '${l10n.hourMeterStart} *',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     prefixIcon: const Icon(Icons.speed),
-                    suffixText: 'hours',
+                    suffixText: 'HM/KM',
                   ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter HM start';
+                      return l10n.pleaseEnterHmStart;
                     }
                     final num? hmValue = double.tryParse(value);
                     if (hmValue == null || hmValue < 0) {
@@ -336,9 +339,9 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Start Photo *',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    Text(
+                      '${l10n.startPhoto} *',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
                     if (_photoFile != null)
@@ -418,9 +421,9 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text(
-                          'Start Operation',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      : Text(
+                          l10n.startOperation,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
               ],

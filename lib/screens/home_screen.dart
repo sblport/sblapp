@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../services/auth_service.dart';
+import '../l10n/app_localizations.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -9,30 +10,32 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
+        title: Text(l10n.home),
         backgroundColor: AppColors.primary,
         automaticallyImplyLeading: false, 
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
+            tooltip: l10n.logout,
             onPressed: () async {
                // Show confirmation dialog
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: const Text('Logout'),
-                  content: const Text('Are you sure you want to logout?'),
+                  title: Text(l10n.logout),
+                  content: Text(l10n.logoutConfirmation),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
+                      child: Text(l10n.cancel),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Logout'),
+                      child: Text(l10n.logout),
                     ),
                   ],
                 ),
@@ -57,9 +60,9 @@ class HomeScreen extends StatelessWidget {
           children: [
             Icon(Icons.home, size: 80, color: AppColors.primary.withOpacity(0.5)),
             const SizedBox(height: 16),
-            const Text(
-              'Welcome Home!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            Text(
+              l10n.welcomeHome,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ],
         ),
