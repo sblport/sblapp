@@ -259,6 +259,12 @@ class EquipmentOperationService {
         // Return null to indicate offline save
         return null;
       }
+      
+      // Rethrow 400 errors so UI can handle (e.g. unfinished task)
+      if (e.response?.statusCode == 400) {
+        rethrow;
+      }
+
       throw Exception('Failed to add task: $e');
     } catch (e) {
       print('DEBUG: General exception: $e');
@@ -293,6 +299,41 @@ class EquipmentOperationService {
       throw Exception('Failed to delete task: $e');
     }
   }
+
+  /// Finish task
+  Future<Task> finishTask(
+    String scrum,
+    int taskId,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final response = await _dio.put(
+        '${ApiConstants.eqpOperationsEndpoint}/$scrum/tasks/$taskId/finish',
+        data: payload,
+      );
+
+      // Handle different response formats from backend
+      if (response.data == null) {
+        throw Exception('Backend returned null response');
+      }
+      
+      // Check if data is wrapped in 'task' key or returned directly
+      dynamic taskData;
+      if (response.data is Map<String, dynamic>) {
+        taskData = response.data['task'] ?? response.data;
+      } else {
+        taskData = response.data;
+      }
+        
+      return Task.fromJson(taskData as Map<String, dynamic>);
+    } catch (e) {
+      if (e is DioException && e.response?.statusCode == 400) {
+        rethrow;
+      }
+      throw Exception('Failed to finish task: $e');
+    }
+  }
+
 
   /// Approve operation
   Future<EquipmentOperation> approveOperation(String scrum) async {
@@ -427,6 +468,21 @@ class EquipmentOperationService {
       return list.map((json) => Location.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Failed to load locations: $e');
+    }
+  }
+  /// Get equipment last HM
+  Future<double?> getLastHm(int equipmentId) async {
+    try {
+      final response = await _dio.get('${ApiConstants.eqpEquipmentEndpoint}/$equipmentId/last-hm');
+      
+      if (response.data is Map && response.data.containsKey('last_hm')) {
+        final val = response.data['last_hm'];
+        return val != null ? double.tryParse(val.toString()) : 0.0;
+      }
+      return 0.0;
+    } catch (e) {
+      print('DEBUG: Error fetching last HM: $e');
+      return 0.0;
     }
   }
 }

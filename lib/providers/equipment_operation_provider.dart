@@ -185,6 +185,22 @@ class EquipmentOperationProvider with ChangeNotifier {
     }
   }
 
+  /// Finish task
+  Future<bool> finishTask(String scrum, int taskId, Map<String, dynamic> payload) async {
+    try {
+      await _service.finishTask(scrum, taskId, payload);
+      
+      // Update current operation by reloading
+      if (_currentOperation != null && _currentOperation!.scrum == scrum) {
+        await loadOperation(scrum);
+      }
+      return true;
+    } catch (e) {
+      // Propagate error to UI
+      rethrow;
+    }
+  }
+
   /// Approve operation
   Future<bool> approveOperation(String scrum) async {
     _isLoadingOperation = true;
@@ -299,5 +315,10 @@ class EquipmentOperationProvider with ChangeNotifier {
   void clearCurrentOperation() {
     _currentOperation = null;
     notifyListeners();
+  }
+
+  /// Get equipment last HM
+  Future<double?> getLastHm(int equipmentId) async {
+    return await _service.getLastHm(equipmentId);
   }
 }

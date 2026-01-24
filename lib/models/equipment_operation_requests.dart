@@ -38,7 +38,7 @@ class CreateOperationRequest {
 
 class CreateTaskRequest {
   final DateTime taskStart;
-  final DateTime taskEnd;
+  final DateTime? taskEnd;
   final double? hmStart;
   final double? hmEnd;
   final int activityId;
@@ -50,7 +50,7 @@ class CreateTaskRequest {
 
   CreateTaskRequest({
     required this.taskStart,
-    required this.taskEnd,
+    this.taskEnd,
     this.hmStart,
     this.hmEnd,
     required this.activityId,
@@ -64,7 +64,7 @@ class CreateTaskRequest {
   Map<String, dynamic> toJson() {
     final map = {
       'task_start': taskStart.toIso8601String(),
-      'task_end': taskEnd.toIso8601String(),
+      'task_end': taskEnd?.toIso8601String(),
       'hm_start': hmStart,
       'hm_end': hmEnd,
       'activity_id': activityId,

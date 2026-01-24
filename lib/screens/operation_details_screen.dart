@@ -15,6 +15,8 @@ import '../models/activity.dart';
 import '../models/location.dart';
 import '../models/organization.dart';
 import '../l10n/app_localizations.dart';
+import 'finish_task_screen.dart';
+import 'package:dio/dio.dart';
 
 class OperationDetailsScreen extends StatefulWidget {
   final String scrum;
@@ -47,6 +49,32 @@ class _OperationDetailsScreenState extends State<OperationDetailsScreen> {
   }
 
   void _showFinishDialog() {
+    final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
+    final operation = provider.currentOperation;
+    
+    if (operation == null) return;
+    
+    // Check for ongoing tasks
+    final ongoingTasks = operation.tasks?.where((t) => t.isOngoing).length ?? 0;
+    if (ongoingTasks > 0) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Cannot Finish Operation'),
+          content: const Text(
+            'Please finish all ongoing tasks before finishing the operation.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => _FinishOperationDialog(scrum: widget.scrum),
@@ -140,6 +168,22 @@ class _OperationDetailsScreenState extends State<OperationDetailsScreen> {
     );
   }
 
+  void _navigateToFinishTask(Task task) async {
+    final success = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FinishTaskScreen(
+          operationScrum: widget.scrum,
+          task: task,
+        ),
+      ),
+    );
+
+    if (success == true) {
+      _loadOperation();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -206,6 +250,7 @@ class _OperationDetailsScreenState extends State<OperationDetailsScreen> {
                       operation: operation,
                       onAddTask: !operation.isFinished ? _showAddTaskDialog : null,
                       onDeleteTask: !operation.isFinished ? _deleteTask : null,
+                      onFinishTask: !operation.isFinished ? _navigateToFinishTask : null,
                     ),
                   ],
                 ),
@@ -392,20 +437,20 @@ class _OperationInfoCard extends StatelessWidget {
             _InfoRow(
               icon: Icons.speed,
               label: l10n.hmStart,
-              value: operation.opsHmStart.toStringAsFixed(1),
+              value: operation.opsHmStart.toStringAsFixed(2),
             ),
             if (operation.opsHmEnd != null) ...[
               const SizedBox(height: 8),
               _InfoRow(
                 icon: Icons.speed,
                 label: l10n.hmEnd,
-                value: operation.opsHmEnd!.toStringAsFixed(1),
+                value: operation.opsHmEnd!.toStringAsFixed(2),
               ),
               const SizedBox(height: 8),
               _InfoRow(
                 icon: Icons.access_time,
                 label: l10n.totalHours,
-                value: '${operation.totalHours!.toStringAsFixed(1)} ${l10n.hours}',
+                value: '${operation.totalHours!.toStringAsFixed(2)} ${l10n.hours}',
               ),
             ],
 
@@ -529,74 +574,168 @@ class _TasksSection extends StatelessWidget {
   final EquipmentOperation operation;
   final VoidCallback? onAddTask;
   final Function(String taskId)? onDeleteTask;
+  final Function(Task task)? onFinishTask;
 
   const _TasksSection({
     required this.operation,
     this.onAddTask,
     this.onDeleteTask,
+    this.onFinishTask,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final tasks = operation.tasks ?? [];
+    
+    // Split tasks
+    final ongoingTasks = tasks.where((t) => t.isOngoing).toList();
+    final completedTasks = tasks.where((t) => t.isCompleted).toList();
+    
+    // Sort completed tasks by start time? They usually come sorted.
+    // ongoingTasks should ideally be just one but we handle list just in case.
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Column(
+      children: [
+        // Ongoing Tasks Section
+        if (ongoingTasks.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  l10n.taskTimeline,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    Icon(Icons.warning_amber, color: Colors.orange[800]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Ongoing Task - Needs Completion',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange[900],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                if (onAddTask != null)
-                  TextButton.icon(
-                    onPressed: onAddTask,
-                    icon: const Icon(Icons.add),
-                    label: Text(l10n.addTask),
-                  ),
+                const SizedBox(height: 12),
+                ...ongoingTasks.map((task) => _buildOngoingTaskCard(context, task)),
               ],
             ),
-            const SizedBox(height: 16),
+          ),
+          const SizedBox(height: 16),
+        ],
 
-            if (tasks.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Column(
-                    children: [
-                      Icon(Icons.task_outlined, size: 48, color: Colors.grey[400]),
-                      const SizedBox(height: 8),
-                      Text(
-                        l10n.noTasksYet,
-                        style: TextStyle(color: Colors.grey[600]),
+        // Tasks List Card
+        Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      l10n.taskTimeline,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    if (onAddTask != null)
+                      TextButton.icon(
+                        // Add Task is DISABLED if there is an ongoing task
+                        onPressed: ongoingTasks.isEmpty ? onAddTask : null,
+                        icon: const Icon(Icons.add),
+                        label: Text(ongoingTasks.isEmpty ? l10n.addTask : 'Finish ongoing first'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: ongoingTasks.isNotEmpty ? Colors.grey : null,
+                        ),
                       ),
-                    ],
-                  ),
+                  ],
                 ),
-              )
-            else
-              ...tasks.asMap().entries.map((entry) {
-                final index = entry.key;
-                final task = entry.value;
-                return _TaskTimelineItem(
-                  task: task,
-                  isFirst: index == 0,
-                  isLast: index == tasks.length - 1,
-                  onDelete: onDeleteTask != null ? () => onDeleteTask!(task.id.toString()) : null,
-                );
-              }).toList(),
+                const SizedBox(height: 16),
+
+                if (completedTasks.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        children: [
+                          Icon(Icons.task_outlined, size: 48, color: Colors.grey[400]),
+                          const SizedBox(height: 8),
+                          Text(
+                            l10n.noTasksYet,
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  ...completedTasks.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final task = entry.value;
+                    return _TaskTimelineItem(
+                      task: task,
+                      isFirst: index == 0,
+                      isLast: index == completedTasks.length - 1,
+                      onDelete: onDeleteTask != null ? () => onDeleteTask!(task.id.toString()) : null,
+                    );
+                  }).toList(),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOngoingTaskCard(BuildContext context, Task task) {
+    final duration = DateTime.now().difference(task.taskStart);
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Colors.orange.shade200),
+        borderRadius: BorderRadius.circular(8)
+      ),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.orange,
+          child: const Icon(Icons.play_arrow, color: Colors.white),
+        ),
+        title: Text(task.activity?.name ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Started: ${_formatTime(task.taskStart)}'),
+            Text('Duration: ${hours}h ${minutes}m (Running)'),
+            if (task.hmStart != null) Text('HM Start: ${task.hmStart!.toStringAsFixed(2)}'),
           ],
+        ),
+        trailing: ElevatedButton(
+          onPressed: onFinishTask != null ? () => onFinishTask!(task) : null,
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+          child: const Text('Finish'),
         ),
       ),
     );
+  }
+
+  String _formatTime(DateTime dateTime) {
+    // Backend already sends GMT+7, no conversion needed
+    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -676,7 +815,7 @@ class _TaskTimelineItem extends StatelessWidget {
                 Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
                 const SizedBox(width: 4),
                 Text(
-                  '${_formatTime(task.taskStart)} - ${_formatTime(task.taskEnd)} (${task.durationText})',
+                  '${_formatTime(task.taskStart)} - ${task.taskEnd != null ? _formatTime(task.taskEnd!) : "Ongoing"} (${task.durationText})',
                   style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                 ),
               ],
@@ -688,7 +827,7 @@ class _TaskTimelineItem extends StatelessWidget {
                   Icon(Icons.speed, size: 14, color: Colors.grey[600]),
                   const SizedBox(width: 4),
                   Text(
-                    'HM: ${task.hmStart!.toStringAsFixed(1)} → ${task.hmEnd!.toStringAsFixed(1)}',
+                    'HM: ${task.hmStart!.toStringAsFixed(2)} → ${task.hmEnd!.toStringAsFixed(2)}',
                     style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                   ),
                 ],
@@ -727,9 +866,8 @@ class _TaskTimelineItem extends StatelessWidget {
   }
 
   String _formatTime(DateTime dateTime) {
-    // Ensure we display local time for user
-    final local = dateTime.toLocal();
-    return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    // Backend already sends GMT+7, no conversion needed
+    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -758,6 +896,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
   bool _isSubmitting = false;
   String? _timeValidationError; // Track time validation error
   bool _isFirstTask = false;
+  bool _finishLater = false;
 
 
   @override
@@ -803,8 +942,8 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
           operationDate.year,
           operationDate.month,
           operationDate.day,
-          lastTask.taskEnd.hour,
-          lastTask.taskEnd.minute,
+          (lastTask.taskEnd ?? lastTask.taskStart).hour,
+          (lastTask.taskEnd ?? lastTask.taskStart).minute,
         );
         
         // HM Start from previous task's HM End
@@ -840,43 +979,19 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
     
     final time = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(isStart ? _taskStart : _taskEnd),
+      initialTime: TimeOfDay.fromDateTime(_taskStart),
     );
 
     if (time != null && mounted) {
       setState(() {
         final operationDate = operation.date;
-        final newDateTime = DateTime(
+        _taskStart = DateTime(
           operationDate.year,
           operationDate.month,
           operationDate.day,
           time.hour,
           time.minute,
         );
-        
-        if (isStart) {
-          _taskStart = newDateTime;
-          // Auto-update task end to be 30 minutes after start (default behavior)
-          _taskEnd = _taskStart.add(const Duration(minutes: 30));
-        } else {
-          _taskEnd = newDateTime;
-        }
-
-        // Calculate HM End based on Duration
-        if (_taskEnd.isAfter(_taskStart) && _hmStartController.text.isNotEmpty) {
-           final hmStart = double.tryParse(_hmStartController.text);
-           if (hmStart != null) {
-              final duration = _taskEnd.difference(_taskStart);
-              // Convert duration to hours (decimal)
-              final hours = duration.inMinutes / 60.0;
-              final hmEnd = hmStart + hours;
-              // Round to 1 decimal place
-              _hmEndController.text = hmEnd.toStringAsFixed(1);
-           }
-        }
-        
-        // Clear validation error when time changes
-        _timeValidationError = null;
       });
     }
   }
@@ -893,37 +1008,22 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
       return;
     }
     
-    // Validate task end is after task start
-    if (_taskEnd.isBefore(_taskStart) || _taskEnd.isAtSameMomentAs(_taskStart)) {
-      setState(() {
-        _timeValidationError = 'Task End must be after Task Start';
-      });
-      return;
-    }
-    
-    // Clear any previous time validation error
-    setState(() {
-      _timeValidationError = null;
-    });
-
     setState(() => _isSubmitting = true);
 
     try {
       final request = CreateTaskRequest(
         taskStart: _taskStart,
-        taskEnd: _taskEnd,
+        taskEnd: null,  // Always null for ongoing tasks
         hmStart: _hmStartController.text.isNotEmpty 
             ? double.tryParse(_hmStartController.text) 
             : null,
-        hmEnd: _hmEndController.text.isNotEmpty 
-            ? double.tryParse(_hmEndController.text) 
-            : null,
+        hmEnd: null,    // Always null for ongoing tasks
         activityId: _selectedActivity!.id,
         locationId: _selectedLocation!.id,
         code: _codeController.text.isNotEmpty ? _codeController.text : null,
         result: _resultController.text.isNotEmpty ? _resultController.text : null,
         remarks: _remarksController.text.isNotEmpty ? _remarksController.text : null,
-        orderBy: _selectedOrganization?.id,
+        orderBy: _selectedOrganization?.id ?? 1, // Default to 1 if not selected
       );
 
       final provider = Provider.of<EquipmentOperationProvider>(context, listen: false);
@@ -934,7 +1034,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Task added successfully!'),
+              content: Text('Task started successfully!'),
               backgroundColor: Colors.green,
             ),
           );
@@ -951,15 +1051,70 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add task: $e')),
-        );
+        if (e is DioException && e.response?.statusCode == 400) {
+           final data = e.response?.data;
+           if (data != null && data is Map && data.containsKey('unfinished_task')) {
+               _showUnfinishedTaskDialog(data['unfinished_task']);
+           } else {
+             ScaffoldMessenger.of(context).showSnackBar(
+               SnackBar(content: Text('Failed to add task: ${e.response?.data['error'] ?? e.message}')),
+             );
+           }
+        } else {
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(content: Text('Failed to add task: $e')),
+           );
+        }
       }
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  void _showUnfinishedTaskDialog(Map<String, dynamic> unfinishedTask) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Unfinished Task'),
+        content: Text(
+          'You have an ongoing task that needs to be finished first.\n\n'
+          'Started: ${_formatTime(DateTime.parse(unfinishedTask['task_start']))}'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx); // Close dialog
+              Navigator.pop(context); // Close sheet
+              
+              try {
+                final task = Task.fromJson(unfinishedTask);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FinishTaskScreen(
+                      operationScrum: widget.scrum,
+                      task: task,
+                    ),
+                  ),
+                ).then((_) {
+                   // Refresh operation after coming back from finish screen
+                   Provider.of<EquipmentOperationProvider>(context, listen: false).loadOperation(widget.scrum);
+                });
+              } catch (e) {
+                print('Error opening finish screen: $e');
+              }
+            },
+            child: const Text('Finish Task'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1018,63 +1173,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                         controller: scrollController,
                         padding: const EdgeInsets.all(16),
                         children: [
-                          // Task Start Time (Time only)
-                          InkWell(
-                            onTap: _isFirstTask ? () => _selectTime(true) : null,
-                            child: InputDecorator(
-                              decoration: InputDecoration(
-                                labelText: _isFirstTask ? '${AppLocalizations.of(context)!.taskStart} *' : '${AppLocalizations.of(context)!.taskStart} (Auto-filled)',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                prefixIcon: const Icon(Icons.schedule),
-                                filled: !_isFirstTask,
-                                fillColor: !_isFirstTask ? Colors.grey[100] : null,
-                              ),
-                              child: Text(
-                                _formatTime(_taskStart),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: !_isFirstTask ? Colors.grey[700] : null,
-                                ),
-                              ),
-                            ),
-                          ),
-                          
-                          // Show validation error if exists
-                          if (_timeValidationError != null) ...[
-                            const SizedBox(height: 8),
-                            Padding(
-                              padding: const EdgeInsets.only(left: 12),
-                              child: Text(
-                                _timeValidationError!,
-                                style: TextStyle(
-                                  color: Colors.red[700],
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 16),
 
-                          // Task End Time (Time only)
-                          InkWell(
-                            onTap: () => _selectTime(false),
-                            child: InputDecorator(
-                              decoration: InputDecoration(
-                                labelText: '${AppLocalizations.of(context)!.taskEnd} *',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                prefixIcon: const Icon(Icons.schedule),
-                              ),
-                              child: Text(
-                                _formatTime(_taskEnd),
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
 
                           // Activity Dropdown
                           DropdownButtonFormField<Activity>(
@@ -1133,30 +1232,74 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                           const SizedBox(height: 16),
 
                           // Instructed By Dropdown
-                          DropdownButtonFormField<Organization>(
-                            value: _selectedOrganization,
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: AppLocalizations.of(context)!.instructedBy,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              prefixIcon: const Icon(Icons.person),
-                            ),
-                            items: provider.organizations.map((org) {
-                              return DropdownMenuItem(
-                                value: org,
-                                child: Text(
-                                  org.chartname,
-                                  overflow: TextOverflow.ellipsis,
+                           Builder(
+                            builder: (context) {
+                              // Pre-select ID 1 if not selected
+                              if (_selectedOrganization == null && provider.organizations.isNotEmpty) {
+                                try {
+                                  final defaultOrg = provider.organizations.firstWhere((org) => org.id == 1);
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    if (mounted) {
+                                      setState(() {
+                                        _selectedOrganization = defaultOrg;
+                                      });
+                                    }
+                                  });
+                                } catch (e) {
+                                  // ID 1 not found
+                                }
+                              }
+                              
+                              return DropdownButtonFormField<Organization>(
+                                value: _selectedOrganization,
+                                isExpanded: true,
+                                decoration: InputDecoration(
+                                  labelText: AppLocalizations.of(context)!.instructedBy,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  prefixIcon: const Icon(Icons.person),
                                 ),
+                                items: provider.organizations.map((org) {
+                                  return DropdownMenuItem(
+                                    value: org,
+                                    child: Text(
+                                      org.chartname,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedOrganization = value;
+                                  });
+                                },
                               );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedOrganization = value;
-                              });
-                            },
+                            }
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Start Time (Editable for first task, Read-only for subsequent)
+                          InkWell(
+                            onTap: _isFirstTask ? () => _selectTime(true) : null,
+                            child: InputDecorator(
+                              decoration: InputDecoration(
+                                labelText: _isFirstTask ? 'Start Time' : 'Start Time (Auto-filled)',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                prefixIcon: const Icon(Icons.access_time),
+                                filled: true,
+                                fillColor: _isFirstTask ? Colors.grey[50] : Colors.grey[100],
+                              ),
+                              child: Text(
+                                '${_taskStart.hour.toString().padLeft(2, '0')}:${_taskStart.minute.toString().padLeft(2, '0')}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: _isFirstTask ? Colors.black87 : Colors.black54,
+                                ),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 16),
 
@@ -1177,33 +1320,7 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                           ),
                           const SizedBox(height: 16),
 
-                          // HM End (Mandatory)
-                          TextFormField(
-                            controller: _hmEndController,
-                            decoration: InputDecoration(
-                              labelText: '${AppLocalizations.of(context)!.hmEnd} *',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              prefixIcon: const Icon(Icons.speed),
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'HM End is required';
-                              }
-                              final hmEnd = double.tryParse(value);
-                              if (hmEnd == null) {
-                                return 'Please enter a valid number';
-                              }
-                              final hmStart = double.tryParse(_hmStartController.text);
-                              if (hmStart != null && hmEnd < hmStart) {
-                                return 'HM End must be greater than or equal to HM Start';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
+
 
                           // Code
                           TextFormField(
@@ -1266,9 +1383,9 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
                                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                     ),
                                   )
-                                : Text(
-                                    AppLocalizations.of(context)!.save,
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                : const Text(
+                                    'Start Task',
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                   ),
                           ),
                         ],
@@ -1285,9 +1402,8 @@ class _AddTaskSheetState extends State<_AddTaskSheet> {
   }
 
   String _formatTime(DateTime dateTime) {
-    // Ensure we display local time
-    final local = dateTime.toLocal();
-    return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    // Backend already sends GMT+7, no conversion needed
+    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -1328,7 +1444,7 @@ class _FinishOperationDialogState extends State<_FinishOperationDialog> {
       if (tasks.isNotEmpty) {
         final lastTask = tasks.last;
         if (lastTask.hmEnd != null) {
-          _hmEndController.text = lastTask.hmEnd!.toStringAsFixed(1);
+          _hmEndController.text = lastTask.hmEnd!.toStringAsFixed(2);
           _isReadonly = true;
         }
       }

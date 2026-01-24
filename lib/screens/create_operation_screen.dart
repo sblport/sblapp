@@ -229,34 +229,68 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // Equipment Dropdown
-                DropdownButtonFormField<Equipment>(
-                  value: _selectedEquipment,
-                  decoration: InputDecoration(
-                    labelText: '${l10n.equipment} *',
-                    border: OutlineInputBorder(
+                // Equipment Dropdown or Empty Warning
+                if (provider.equipment.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
                     ),
-                    prefixIcon: const Icon(Icons.agriculture),
-                  ),
-                  items: provider.equipment.map((equipment) {
-                    return DropdownMenuItem(
-                      value: equipment,
-                      child: Text(
-                        equipment.displayName,
-                        overflow: TextOverflow.ellipsis, // Prevent overflow
-                        maxLines: 1,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Colors.orange),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'No equipment assigned to you.',
+                            style: TextStyle(color: Colors.deepOrange),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  DropdownButtonFormField<Equipment>(
+                    value: _selectedEquipment,
+                    decoration: InputDecoration(
+                      labelText: '${l10n.equipment} *',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    );
-                  }).toList(),
-                  isExpanded: true, // Allow dropdown to expand to fit width
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedEquipment = value;
-                    });
-                  },
-                  validator: (value) => value == null ? l10n.pleaseSelectEquipment : null,
-                ),
+                      prefixIcon: const Icon(Icons.agriculture),
+                    ),
+                    items: provider.equipment.map((equipment) {
+                      return DropdownMenuItem(
+                        value: equipment,
+                        child: Text(
+                          equipment.displayName,
+                          overflow: TextOverflow.ellipsis, // Prevent overflow
+                          maxLines: 1,
+                        ),
+                      );
+                    }).toList(),
+                    isExpanded: true, // Allow dropdown to expand to fit width
+                    onChanged: (value) async {
+                      if (value != null) {
+                        setState(() {
+                          _selectedEquipment = value;
+                        });
+                        
+                        // Fetch last HM
+                        final lastHm = await provider.getLastHm(value.id);
+                        if (lastHm != null && lastHm > 0) {
+                          if (mounted) {
+                            setState(() {
+                              _hmStartController.text = lastHm.toStringAsFixed(2);
+                            });
+                          }
+                        }
+                      }
+                    },
+                    validator: (value) => value == null ? l10n.pleaseSelectEquipment : null,
+                  ),
                 const SizedBox(height: 16),
 
                 // Date Picker
@@ -403,7 +437,7 @@ class _CreateOperationScreenState extends State<CreateOperationScreen> {
 
                 // Submit Button
                 ElevatedButton(
-                  onPressed: _isSubmitting ? null : _submit,
+                  onPressed: (_isSubmitting || provider.equipment.isEmpty) ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,

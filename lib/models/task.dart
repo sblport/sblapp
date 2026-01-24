@@ -4,7 +4,7 @@ import 'location.dart';
 class Task {
   final int id;
   final DateTime taskStart;
-  final DateTime taskEnd;
+  final DateTime? taskEnd;
   final double? hmStart;
   final double? hmEnd;
   final Activity? activity;
@@ -17,7 +17,7 @@ class Task {
   Task({
     required this.id,
     required this.taskStart,
-    required this.taskEnd,
+    this.taskEnd,
     this.hmStart,
     this.hmEnd,
     this.activity,
@@ -31,8 +31,12 @@ class Task {
   factory Task.fromJson(Map<String, dynamic> json) {
     return Task(
       id: int.tryParse(json['id'].toString()) ?? 0,
-      taskStart: DateTime.parse(json['task_start'] as String),
-      taskEnd: DateTime.parse(json['task_end'] as String),
+      // Backend sends GMT+7 times like "2026-01-22 10:18:00" without timezone
+      // Parse and treat as local (not UTC) to avoid conversion
+      taskStart: _parseAsLocal(json['task_start'] as String),
+      taskEnd: json['task_end'] != null 
+          ? _parseAsLocal(json['task_end'] as String)
+          : null,
       hmStart: json['hm_start'] != null 
           ? double.tryParse(json['hm_start'].toString()) 
           : null,
@@ -54,11 +58,33 @@ class Task {
     );
   }
 
+  // Helper to parse datetime as local without UTC conversion
+  static DateTime _parseAsLocal(String dateTimeString) {
+    // Parse the datetime string
+    final parsed = DateTime.parse(dateTimeString);
+    
+    // If it's already local (has no Z), just return it
+    if (!dateTimeString.endsWith('Z') && !dateTimeString.contains('+')) {
+      // Treat as local time in current timezone
+      return DateTime(
+        parsed.year,
+        parsed.month,
+        parsed.day,
+        parsed.hour,
+        parsed.minute,
+        parsed.second,
+        parsed.millisecond,
+      );
+    }
+    
+    return parsed.toLocal();
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'task_start': taskStart.toIso8601String(),
-      'task_end': taskEnd.toIso8601String(),
+      'task_end': taskEnd?.toIso8601String(),
       'hm_start': hmStart,
       'hm_end': hmEnd,
       'activity_id': activity?.id,
@@ -70,11 +96,18 @@ class Task {
     };
   }
 
-  Duration get duration => taskEnd.difference(taskStart);
+  bool get isOngoing => taskEnd == null;
+  bool get isCompleted => taskEnd != null;
+
+  Duration? get duration => taskEnd != null 
+      ? taskEnd!.difference(taskStart) 
+      : null;
 
   String get durationText {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
+    if (duration == null) return 'Ongoing';
+    
+    final hours = duration!.inHours;
+    final minutes = duration!.inMinutes.remainder(60);
     if (hours > 0) {
       return '${hours}h ${minutes}m';
     }
